@@ -162,7 +162,7 @@ func (c *Client) call(ctx context.Context, invocations ...Invocation) ([]rawInvo
 	if err != nil {
 		return nil, fmt.Errorf("performing HTTP request: %w", err)
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	body, err := io.ReadAll(httpResp.Body)
 	if err != nil {
