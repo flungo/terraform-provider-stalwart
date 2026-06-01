@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -77,9 +78,11 @@ func (r *mailingListResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Description: "Human-readable description of the mailing list.",
 			},
 			"recipients": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Email addresses that are members of the mailing list.",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Email addresses that are members of the mailing list.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}

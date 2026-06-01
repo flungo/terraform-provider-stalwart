@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -103,14 +104,18 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Built-in role for the account: `User`, `Admin`, or `Custom`. Defaults to `User`.",
 			},
 			"role_ids": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Custom role ids assigned to the account, used when `role` is `Custom`.",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Custom role ids assigned to the account, used when `role` is `Custom`.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"member_of": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Ids of groups this account is a member of (maps to `memberGroupIds`).",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Ids of groups this account is a member of (maps to `memberGroupIds`).",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,

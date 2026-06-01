@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -63,19 +64,25 @@ func (r *roleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Description: "Description of the role. This is the role's human-facing identifier.",
 			},
 			"extends": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Ids of roles this role extends (maps to `roleIds`).",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Ids of roles this role extends (maps to `roleIds`).",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"enabled_permissions": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Permissions explicitly enabled by this role.",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Permissions explicitly enabled by this role.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"disabled_permissions": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Permissions explicitly disabled by this role; takes precedence over enabled permissions.",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Permissions explicitly disabled by this role; takes precedence over enabled permissions.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}
