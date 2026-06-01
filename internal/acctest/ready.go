@@ -75,8 +75,8 @@ func diagnose(ctx context.Context, base string) string {
 	probes := []probe{
 		{http.MethodGet, "/healthz/live", ""},
 		{http.MethodGet, "/healthz/ready", ""},
-		{http.MethodPost, "/api", jmapBody},
 		{http.MethodPost, "/jmap", jmapBody},
+		{http.MethodPost, "/api", jmapBody},
 		{http.MethodGet, "/api/schema", ""},
 	}
 

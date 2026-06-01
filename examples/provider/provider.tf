@@ -7,7 +7,7 @@ terraform {
 }
 
 provider "stalwart" {
-  endpoint = "https://mail.example.com" # base URL; the provider appends /api
+  endpoint = "https://mail.example.com" # base URL; the provider appends /jmap
   token    = var.stalwart_token         # or set STALWART_TOKEN
 
   # Username/password authentication is an alternative to a bearer token:
