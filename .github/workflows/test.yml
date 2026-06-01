@@ -82,8 +82,37 @@ jobs:
         run: |
           mkdir -p "${{ runner.temp }}/stalwart-logs"
           set -o pipefail
-          go test ./internal/provider/... -v -timeout=30m 2>&1 \
+          go test ./internal/provider/... -v -timeout=30m \
+            -coverpkg=github.com/flungo/terraform-provider-stalwart/internal/provider,github.com/flungo/terraform-provider-stalwart/internal/client \
+            -coverprofile=coverage.out 2>&1 \
             | tee "${{ runner.temp }}/stalwart-logs/go-test.log"
+      - name: Enforce coverage threshold
+        # Only gate on the primary version so the threshold lives in one place.
+        # The floor is intentionally conservative; ratchet it toward the actual
+        # figure reported in the job summary as coverage stabilises.
+        if: matrix.stalwart == 'v0.16'
+        run: ./scripts/coverage-check.sh coverage.out 75
+      - name: Coverage report
+        if: always()
+        run: |
+          if [ -f coverage.out ]; then
+            go tool cover -html=coverage.out -o coverage.html
+            {
+              echo "### Coverage (${{ matrix.stalwart }})"
+              echo '```'
+              go tool cover -func=coverage.out | tail -1
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.stalwart }}
+          path: |
+            coverage.out
+            coverage.html
+          if-no-files-found: ignore
       - name: Upload Stalwart diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
