@@ -59,7 +59,7 @@ func (d *domainDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Opaque server-assigned identifier (ULID) of the domain.",
+				Description: "Opaque server-assigned identifier of the domain.",
 			},
 			"description": schema.StringAttribute{
 				Computed:    true,

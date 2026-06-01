@@ -54,7 +54,7 @@ func (d *dnsRecordsDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 			},
 			"domain_id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Opaque server-assigned identifier (ULID) of the domain.",
+				Description: "Opaque server-assigned identifier of the domain.",
 			},
 			"zone_file": schema.StringAttribute{
 				Computed:    true,

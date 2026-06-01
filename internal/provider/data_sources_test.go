@@ -66,7 +66,7 @@ resource "stalwart_account" "test" {
   domain_id   = stalwart_domain.test.id
   name        = "alice"
   description = "data source account"
-  password    = "s3cret-pass"
+  password    = "correct-horse-battery-staple-42"
   quota       = 1073741824
 }
 

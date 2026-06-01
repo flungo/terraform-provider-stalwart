@@ -61,7 +61,7 @@ func (d *accountDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			},
 			"id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Opaque server-assigned identifier (ULID) of the account.",
+				Description: "Opaque server-assigned identifier of the account.",
 			},
 			"name": schema.StringAttribute{
 				Computed:    true,
