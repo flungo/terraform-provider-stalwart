@@ -12,6 +12,26 @@ import (
 	"testing"
 )
 
+func TestNewValidation(t *testing.T) {
+	cases := map[string]struct {
+		cfg     Config
+		wantErr bool
+	}{
+		"token only":            {Config{Endpoint: "https://x", Token: "t"}, false},
+		"user and password":     {Config{Endpoint: "https://x", Username: "u", Password: "p"}, false},
+		"no endpoint":           {Config{Token: "t"}, true},
+		"no credentials":        {Config{Endpoint: "https://x"}, true},
+		"token and username":    {Config{Endpoint: "https://x", Token: "t", Username: "u", Password: "p"}, true},
+		"username without pass": {Config{Endpoint: "https://x", Username: "u"}, true},
+	}
+	for name, tc := range cases {
+		_, err := New(tc.cfg)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("%s: New() error = %v, wantErr = %v", name, err, tc.wantErr)
+		}
+	}
+}
+
 // TestInvocationMarshal verifies that a method call is encoded as the JMAP
 // [name, arguments, callId] tuple.
 func TestInvocationMarshal(t *testing.T) {

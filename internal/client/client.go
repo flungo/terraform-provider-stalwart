@@ -67,8 +67,15 @@ func New(cfg Config) (*Client, error) {
 	if cfg.Endpoint == "" {
 		return nil, fmt.Errorf("endpoint is required")
 	}
-	if cfg.Token == "" && cfg.Username == "" {
+	// Exactly one authentication method must be configured: a bearer token, or a
+	// username/password pair (with the password required when a username is set).
+	switch {
+	case cfg.Token == "" && cfg.Username == "":
 		return nil, fmt.Errorf("either a token or a username/password pair is required")
+	case cfg.Token != "" && cfg.Username != "":
+		return nil, fmt.Errorf("token and username are mutually exclusive; set only one")
+	case cfg.Username != "" && cfg.Password == "":
+		return nil, fmt.Errorf("password is required when a username is set")
 	}
 
 	endpoint := strings.TrimRight(cfg.Endpoint, "/") + apiPath
