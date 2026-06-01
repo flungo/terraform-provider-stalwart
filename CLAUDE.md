@@ -110,12 +110,13 @@ ls /tmp/website/src/content/docs/docs/ref/object/
 The GitHub raw API (`api.github.com/.../git/trees`) rate-limits unauthenticated
 requests quickly — prefer a shallow `git clone`.
 
-## Acceptance test harness (in progress)
+## Acceptance test harness
 
-Goal: `make testacc` spins up a real Stalwart instance in a container, applies
-fixtures, points the provider at it, and runs the `TF_ACC` tests — no
-user-provided instance or env vars required. Image: `stalwartlabs/stalwart:v0.16`
-(keep the version overridable for future matrix testing).
+`make testacc` spins up a real Stalwart instance in a container, points the
+provider at it, and runs the `TF_ACC` tests — no user-provided instance or env
+vars required. Image: `stalwartlabs/stalwart:v0.16` (overridable via
+`STALWART_TEST_IMAGE` for version matrix testing). VERIFIED green in CI as of
+the domain lifecycle test; the `testacc` job runs on every PR/push.
 
 ### How to bring up a *headless* Stalwart for testing
 
@@ -143,6 +144,37 @@ dependency order — the intended way to apply fixtures. `stalwart-cli describe`
 explores the schema (useful when extending the provider). The CLI is a separate
 binary (`stalwartlabs/cli`), schema-driven; it fetches the schema from
 `/api/schema` (the HTTP API) and issues JMAP method calls against `/jmap`.
+**NOTE: `stalwart-cli` is NOT bundled in the `stalwartlabs/stalwart` image** —
+the Dockerfile copies only the `stalwart` server binary. Using the CLI in the
+harness would mean installing a separate, version-matched binary.
+
+### Acceptance-test methodology (and why not `stalwart-cli snapshot`)
+
+Each resource/data-source has a full-lifecycle acceptance test
+(`internal/provider/*_resource_test.go`) that, for every writable field,
+asserts the value **twice**:
+
+1. In Terraform state, via `resource.TestCheckResourceAttr` (proves the provider
+   round-trips the value through plan/apply/read with no inconsistency).
+2. On the server, via a **direct JMAP client built independently of the
+   provider's read path** (`accClient` + `checkServer*` helpers in
+   `acc_checks_test.go`). This is the "don't grade your own homework" guarantee:
+   a write-path bug can't be masked by a matching read-path bug. The check also
+   verifies id linkages (a child's server-side `domainId`/`memberGroupIds`/
+   `roleIds` equal the referenced resources' ids from state).
+
+Common behaviour is abstracted in `acc_helpers_test.go` (client construction,
+HCL list rendering) and `acc_checks_test.go` (per-type server fetch + field
+assertion helpers: `wantStr`, `wantBool`, `wantSet`, `wantQuota`, ...).
+
+`stalwart-cli snapshot` before/after diffing was considered and **rejected**:
+(a) the CLI isn't in the server image (extra moving part); (b) snapshot is lossy
+by design — it strips secrets and server-set fields, masks values, and rewrites
+ids to client-refs (`#domain-b`) — so it cannot assert exact field values; (c)
+it is built for backup/migration, not per-field verification. The direct-client
+read gives a *more* precise "exactly these fields are as expected" guarantee
+without the CLI dependency. Revisit only if a future need (e.g. asserting the
+absence of unexpected *objects*, not fields) calls for a whole-state diff.
 
 ## Test/CI ENVIRONMENT CONSTRAINTS (Claude Code on the web)
 
