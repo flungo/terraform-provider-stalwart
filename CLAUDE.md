@@ -1,0 +1,129 @@
+# CLAUDE.md
+
+Working notes for developing the Stalwart Terraform provider. Records hard-won
+facts about the Stalwart API and the test environment so future sessions can
+start fast.
+
+## Project shape
+
+- Terraform provider on the **Plugin Framework** (not the legacy SDK).
+- Targets **Stalwart v0.16+**, which dropped the REST management API and exposes
+  all configuration as JMAP objects.
+- `internal/client/` — minimal JMAP client. `internal/provider/` — resources and
+  data sources.
+
+## Stalwart management API (corrected against the real schema)
+
+The original task brief had several inaccuracies; the truth, confirmed from the
+`stalwartlabs/website` docs repo (`src/content/docs/docs/ref/object/*.md`):
+
+- **Endpoint is `/api`**, not `/jmap`. (`/jmap` is the mail-client endpoint; the
+  management JMAP API lives at `/api`.) The client appends `/api` to the
+  configured base endpoint.
+- **Capability URN is `urn:stalwart:jmap`** (+ `urn:ietf:params:jmap:core`), not
+  `urn:stalwart:core`.
+- **Wire method/type names carry an `x:` prefix**: `x:Domain/get`,
+  `x:Account/set`, `x:DkimSignature/query`, etc. The CLI omits the prefix for
+  display but it is required on the wire.
+- **Accounts and groups are the same `Account` object**, discriminated by an
+  `@type` of `"User"` vs `"Group"`. There is no separate Group object.
+- **DNS recommendations are not a separate method**: they are the read-only
+  `dnsZoneFile` text field on the `Domain` object. `data.stalwart_dns_records`
+  reads that field.
+- Objects are keyed by an **opaque server-generated ULID** (`id`). Child objects
+  reference their domain via `domainId` (the ULID), not the domain name.
+- Standard JMAP `Foo/get` | `Foo/set` (create/update/destroy) | `Foo/query`
+  semantics throughout. Singletons use the literal id `singleton`.
+
+### Reference docs
+
+The official docs site (`stalw.art/docs`) **blocks automated fetches (HTTP 403)**
+and DeepWiki rate-limits aggressively. Instead, clone the docs source and read
+the Markdown directly:
+
+```sh
+git clone --depth 1 https://github.com/stalwartlabs/website.git /tmp/website
+# Object schemas (fields + JMAP methods + curl examples + CLI examples):
+ls /tmp/website/src/content/docs/docs/ref/object/
+# e.g. domain.md, account.md, dkim-signature.md, mailing-list.md, role.md
+```
+
+The GitHub raw API (`api.github.com/.../git/trees`) rate-limits unauthenticated
+requests quickly — prefer a shallow `git clone`.
+
+## Acceptance test harness (in progress)
+
+Goal: `make testacc` spins up a real Stalwart instance in a container, applies
+fixtures, points the provider at it, and runs the `TF_ACC` tests — no
+user-provided instance or env vars required. Image: `stalwartlabs/stalwart:v0.16`
+(keep the version overridable for future matrix testing).
+
+### How to bring up a *headless* Stalwart for testing
+
+The key insight: **recovery mode** exposes the full JMAP management API over
+plain HTTP with no TLS, no setup wizard, and no mail services — exactly what the
+provider talks to.
+
+- Write a minimal `config.json` containing only the DataStore object:
+  `{"@type":"RocksDb","path":"/var/lib/stalwart/"}` (mount at
+  `/etc/stalwart/config.json` / wherever `--config` points).
+- Start the container with:
+  - `STALWART_RECOVERY_MODE=1` — disables all background/mail services, serves
+    only the HTTP management API.
+  - `STALWART_RECOVERY_ADMIN=admin:<password>` — pins a known admin credential
+    (no need to scrape the random bootstrap password from logs).
+  - `STALWART_RECOVERY_MODE_PORT` (default `8080`) — the HTTP management port.
+- The management API is then reachable at `http://<host>:8080/api`. The provider
+  authenticates with HTTP Basic (`admin:<password>`) or a bearer token.
+- Without `config.json`, the first start instead enters **bootstrap mode**
+  (random admin password printed once to stderr, only the `Bootstrap` object
+  exposed) — avoid for tests; recovery mode is deterministic.
+
+`stalwart-cli apply <plan.json>` loads a batch of create/update/destroy ops in
+dependency order — the intended way to apply fixtures. `stalwart-cli describe`
+explores the schema (useful when extending the provider). The CLI is a separate
+binary (`stalwartlabs/cli`), schema-driven, talks to the same `/api`.
+
+## Test/CI ENVIRONMENT CONSTRAINTS (Claude Code on the web)
+
+These are specific to the sandboxed remote execution environment; a developer
+laptop or CI runner will differ.
+
+- **Docker is installed but the daemon is NOT running and there is no socket.**
+  `docker` and `dockerd` binaries exist at `/usr/bin`. Start it manually:
+  `sudo -n dockerd >/tmp/dockerd.log 2>&1 &` then wait ~8s. It comes up as
+  v29.3.1 with the `overlayfs` storage driver. cgroup v1, "No cpuset support"
+  warnings are harmless.
+- **`dockerd` does NOT persist across conversation turns** — re-check with
+  `pgrep -x dockerd` and restart if needed at the start of any turn that uses it.
+- **Container image pulls are BLOCKED by the network allowlist.** The registry
+  manifest endpoints are reachable (`registry-1.docker.io` → 404,
+  `ghcr.io` → 301 are normal responses), but the **blob/layer CDNs return 403**:
+  - `production.cloudfront.docker.com` (Docker Hub layer blobs)
+  - `pkg-containers.githubusercontent.com` (GHCR layer blobs)
+  These two hosts must be added to the environment's network allowlist before
+  `docker pull stalwartlabs/stalwart:v0.16` (or the `ghcr.io/...` mirror) can
+  succeed. A 403 from `curl https://<host>/` is the signature of an allowlisted-
+  denied host (reachable hosts give 301/404/200). Docker Hub anonymous pulls can
+  also hit a separate rate limit ("unauthenticated pull rate limit").
+- Go module proxy (`proxy.golang.org`) and `github.com` are reachable.
+
+## Tooling versions / gotchas
+
+- `.golangci.yml` is **golangci-lint v2 config format** (`version: "2"`). This
+  requires **golangci-lint v2.x** and **golangci-lint-action@v7+**; the older
+  `@v6` action installs golangci-lint v1.x and fails to parse a v2 config with
+  **exit code 3** (config load error, distinct from exit 1 = lint findings).
+  CI pins `version: v2.5.0`. Local installed version is also v2.5.0.
+- Go toolchain in the environment auto-upgrades (`go.mod` shows `go 1.25.8`).
+- The provider's `errcheck` linter requires explicitly discarding deferred
+  `Close()` errors: `defer func() { _ = x.Close() }()`.
+
+## Verification commands
+
+```sh
+go build ./... && go vet ./... && go test ./...   # unit tests, no network
+gofmt -l -s .                                      # must print nothing
+golangci-lint run ./...                            # needs v2.x
+make testacc                                        # acceptance (needs container)
+```

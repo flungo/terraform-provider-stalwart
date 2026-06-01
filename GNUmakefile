@@ -28,8 +28,12 @@ test: ## Run unit tests.
 	go test ./... $(TESTARGS) -timeout=120s
 
 .PHONY: testacc
-testacc: ## Run acceptance tests against a live server (requires TF_ACC and STALWART_* env vars).
-	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout=120m
+testacc: ## Run acceptance tests. Boots a throwaway Stalwart container automatically (needs Docker).
+	# The test harness starts a disposable Stalwart container, so no instance or
+	# credentials need to be supplied. Point the suite at your own server instead
+	# by exporting STALWART_ENDPOINT (and STALWART_TOKEN or STALWART_USERNAME /
+	# STALWART_PASSWORD). Override the image with STALWART_TEST_IMAGE.
+	TF_ACC=1 go test ./internal/provider/... -v $(TESTARGS) -timeout=30m
 
 .PHONY: generate
 generate: ## Generate documentation and other code-generated artifacts.
