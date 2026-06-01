@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -109,9 +110,11 @@ func (r *dkimSignatureResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "Canonicalization algorithm. Defaults to `relaxed/relaxed`.",
 			},
 			"headers": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Message headers to include in the DKIM signature.",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Message headers to include in the DKIM signature. Defaults to a standard set.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"report": schema.BoolAttribute{
 				Optional:    true,

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -87,8 +88,11 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"aliases": schema.ListAttribute{
 				Optional:    true,
+				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Additional domain names that are aliases of this domain.",
+				Description: "Additional domain names that are aliases of this domain. " +
+					"Defaults to an empty list.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"enabled": schema.BoolAttribute{
 				Optional:    true,
@@ -136,8 +140,10 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"report_address": schema.StringAttribute{
 				Optional: true,
+				Computed: true,
 				Description: "Address to receive DMARC, TLS-RPT and CAA reports for this domain " +
-					"(maps to `reportAddressUri`).",
+					"(maps to `reportAddressUri`). Defaults to `mailto:postmaster`.",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,

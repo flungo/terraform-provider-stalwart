@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -93,9 +94,11 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Description: "Built-in role for the group: `Default` or `Custom`. Defaults to `Default`.",
 			},
 			"role_ids": schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Custom role ids assigned to the group, used when `role` is `Custom`.",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "Custom role ids assigned to the group, used when `role` is `Custom`.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
