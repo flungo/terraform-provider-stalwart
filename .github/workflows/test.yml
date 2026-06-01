@@ -38,7 +38,10 @@ jobs:
       - name: gofmt
         run: test -z "$(gofmt -l -s .)" || (gofmt -l -s . && exit 1)
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
+        with:
+          # golangci-lint v2 is required to parse the v2-format .golangci.yml.
+          version: v2.5.0
 
   test:
     runs-on: ubuntu-latest
