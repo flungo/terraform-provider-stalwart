@@ -228,11 +228,16 @@ func stringListValue(slice []string) (types.List, diag.Diagnostics) {
 	return types.ListValueFrom(context.Background(), types.StringType, slice)
 }
 
-// stringSetValue converts a Go slice to a Terraform set of strings, mapping a
-// nil slice to a null set.
+// stringSetValue converts a Go slice to a Terraform set of strings. A nil slice
+// maps to an empty set, not null: every set-valued attribute in this provider is
+// Optional+Computed with set semantics where "empty" is the natural "no items",
+// and the server may either return an empty collection or omit the key entirely
+// (e.g. roleIds is absent unless the role is the Custom variant). Reading those
+// back as an empty set keeps the value non-null and consistent with a config
+// that specifies `[]`, avoiding "inconsistent result after apply".
 func stringSetValue(slice []string) (types.Set, diag.Diagnostics) {
 	if slice == nil {
-		return types.SetNull(types.StringType), nil
+		slice = []string{}
 	}
 	return types.SetValueFrom(context.Background(), types.StringType, slice)
 }
