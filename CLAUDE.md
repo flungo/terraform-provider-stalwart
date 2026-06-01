@@ -12,25 +12,50 @@ start fast.
 - `internal/client/` — minimal JMAP client. `internal/provider/` — resources and
   data sources.
 
+## Source verification
+
+Every non-obvious claim below has been fact-checked against the two upstream
+repos. Clone both and grep them when extending the provider; do NOT trust the
+generated `ref/object/*.md` curl snippets for the endpoint path (they are wrong
+— see below).
+
+- Code: `stalwartlabs/stalwart` — verified at commit `68946d4` (2026-05-29).
+- Docs: `stalwartlabs/website` — verified at commit `8044db7` (2026-05-29).
+
+```sh
+git clone --depth 1 https://github.com/stalwartlabs/stalwart.git /tmp/stalwart-src
+git clone --depth 1 https://github.com/stalwartlabs/website.git    /tmp/website
+```
+
+The management object schema lives in
+`stalwart-src/crates/registry/src/schema/structs.rs` (one Rust struct per
+object, with `#[serde(rename = "...")]` giving the JSON field names). Collection
+wire formats are in `crates/registry/src/types/{map,list}.rs`. HTTP routing is in
+`crates/http/src/request.rs`. JMAP capability/method naming is in
+`crates/jmap-proto/src/request/{capability,method}.rs`.
+
 ## Stalwart management API (corrected against the real schema)
 
-The original task brief had several inaccuracies; the truth, confirmed from the
-`stalwartlabs/website` docs repo (`src/content/docs/docs/ref/object/*.md`):
+The original task brief had several inaccuracies; the truth, fact-checked
+against code (`stalwart-src`) and docs (`website`):
 
 - **JMAP endpoint is `/jmap`** (the client appends it to the configured base
-  endpoint). This was VERIFIED EMPIRICALLY against a live v0.16 container, and
-  contradicts the schema-reference object pages: those pages show JMAP `curl`
-  examples POSTing to `https://mail.example.com/api`, but a real server returns
-  **404** for `POST /api` and **200** for `POST /jmap` with the same JMAP body.
-  `/api/*` is a separate small HTTP API (`/api/auth`, `/api/schema`,
-  telemetry) per `http/index.md` — it does NOT accept JMAP method calls. Trust
-  the hand-written `http/index.md` / `development/api.md` over the generated
-  ref/object curl snippets on the endpoint path.
+  endpoint). VERIFIED in code: `crates/http/src/request.rs` routes `"jmap" =>`
+  (empty next segment + POST) to `handle_jmap_request` (~line 83), while
+  `"api" =>` routes to a separate `handle_api_request` (~line 403). Also
+  confirmed empirically against a live v0.16 container: `POST /api` → **404**,
+  `POST /jmap` → **200** for the same JMAP body. The generated
+  `ref/object/*.md` curl snippets show `POST .../api` and are WRONG; the
+  hand-written `http/index.md` / `development/api.md` correctly state JMAP is at
+  `/jmap` and `/api/*` is a small separate HTTP API (auth, schema, telemetry).
 - **Capability URN is `urn:stalwart:jmap`** (+ `urn:ietf:params:jmap:core`), not
-  `urn:stalwart:core`.
+  `urn:stalwart:core`. VERIFIED: `crates/jmap-proto/src/request/capability.rs`
+  (`Capability::Stalwart => "urn:stalwart:jmap"`).
 - **Wire method/type names carry an `x:` prefix**: `x:Domain/get`,
-  `x:Account/set`, `x:DkimSignature/query`, etc. The CLI omits the prefix for
-  display but it is required on the wire.
+  `x:Account/set`, `x:DkimSignature/query`, etc. VERIFIED:
+  `crates/jmap-proto/src/request/method.rs` (`format!("x:{}/{}", obj, method)`
+  and `s.strip_prefix("x:")`). The CLI omits the prefix for display but it is
+  required on the wire.
 - **Accounts and groups are the same `Account` object**, discriminated by an
   `@type` of `"User"` vs `"Group"`. There is no separate Group object.
 - **DNS recommendations are not a separate method**: they are the read-only
@@ -42,20 +67,32 @@ The original task brief had several inaccuracies; the truth, confirmed from the
   semantics throughout. Singletons use the literal id `singleton`.
 - **Collection-valued properties are JSON objects, NOT arrays.** Sending an array
   is rejected with `invalidPatch: Invalid value for object property`. Two
-  encodings (mirroring the server's Rust `Map<T>` / `List<T>` in
-  `stalwartlabs/stalwart` `crates/registry/src/schema/structs.rs` +
-  `crates/registry/src/types/{map,list}.rs`):
-  - `Map<T>`  -> `{"<value>": true, ...}` (a set keyed by value). Used by:
-    Domain `aliases`; Account/Group `memberGroupIds`; MailingList `recipients`;
-    Role `roleIds`/`enabledPermissions`/`disabledPermissions`; DkimSignature
+  encodings, VERIFIED in the Rust serializers:
+  - `Map<T>`  -> `{"<value>": true, ...}` (a set keyed by value).
+    VERIFIED: `crates/registry/src/types/map.rs:222`
+    (`map.serialize_entry(&item.as_string(), &true)`). Used by: Domain
+    `aliases`; Account/Group `memberGroupIds`; MailingList `recipients`; Role
+    `roleIds`/`enabledPermissions`/`disabledPermissions`; DkimSignature
     `headers`; nested `roles.roleIds`, permission lists.
-  - `List<T>` -> `{"0": <item>, "1": <item>}` (keyed by stringified index). Used
-    by: Account/Group `credentials` and `aliases` (List<EmailAlias>).
-  - `quotas` is `VecMap<StorageQuota,u64>` -> plain `{"maxDiskQuota": 123}`.
+  - `List<T>` -> `{"0": <item>, "1": <item>}` (keyed by stringified index).
+    VERIFIED: `crates/registry/src/types/list.rs:168`
+    (`map.serialize_entry(&key.to_string(), value)`). Used by: Account/Group
+    `credentials` and `aliases` (`List<EmailAlias>`).
+  - `quotas` is `VecMap<StorageQuota,u64>` -> plain `{"maxDiskQuota": 123}`
+    (`crates/utils/src/map/vec_map.rs`).
   The client models these with `StringSet` / `IndexList[T]` (internal/client/
   collections.go), which marshal empty as `{}` (required-present on create).
-  NOTE: `aliases` is `Map<String>` on Domain but `List<EmailAlias>` on
-  Account/MailingList — same name, different wire type.
+  NOTE: `aliases` is `Map<String>` on Domain (`structs.rs:2658`) but
+  `List<EmailAlias>` on Account/MailingList — same name, different wire type.
+- **Server applies defaults / always-returns collections → Terraform attributes
+  must be `Optional + Computed`.** A bare `Optional` attribute that the server
+  defaults or echoes back triggers "Provider produced inconsistent result after
+  apply" (was null, now <server value>). Examples VERIFIED:
+  `reportAddressUri` default `"mailto:postmaster"`
+  (`structs_impl.rs:19512`; docs `domain.md:121`); collection fields are
+  non-`Option` in the structs so the server always returns them (as `{}` → an
+  empty list on read). Such attributes use `Optional + Computed` with a
+  `UseStateForUnknown` plan modifier in this provider.
 
 ### Reference docs
 
