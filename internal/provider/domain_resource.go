@@ -166,13 +166,7 @@ func (r *domainResource) toAPI(ctx context.Context, m *domainResourceModel, diag
 		CertificateManagement: managementRef(m.CertificateManagement.ValueString(), m.AcmeProviderID, m.DNSServerID),
 		DNSManagement:         managementRef(m.DNSManagement.ValueString(), m.AcmeProviderID, m.DNSServerID),
 	}
-	aliases := stringSlice(ctx, m.Aliases, diags)
-	if aliases != nil {
-		d.Aliases = &aliases
-	} else {
-		empty := []string{}
-		d.Aliases = &empty
-	}
+	d.Aliases = stringSetPtr(stringSlice(ctx, m.Aliases, diags))
 	return d
 }
 

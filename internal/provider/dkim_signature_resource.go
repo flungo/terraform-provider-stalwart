@@ -147,9 +147,8 @@ func (r *dkimSignatureResource) toAPI(ctx context.Context, m *dkimSignatureResou
 		Canonicalization: strPtr(m.Canonicalization),
 		Report:           boolPtr(m.Report),
 	}
-	headers := stringSlice(ctx, m.Headers, diags)
-	if headers != nil {
-		sig.Headers = &headers
+	if headers := stringSlice(ctx, m.Headers, diags); headers != nil {
+		sig.Headers = stringSetPtr(headers)
 	}
 	return sig
 }

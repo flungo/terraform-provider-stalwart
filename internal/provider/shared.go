@@ -226,11 +226,11 @@ func stringListValue(slice []string) (types.List, diag.Diagnostics) {
 	return types.ListValueFrom(context.Background(), types.StringType, slice)
 }
 
-// ptrSlice returns a pointer to s, or nil when s is nil. It is used to populate
-// optional "omitempty" slice fields on request payloads.
-func ptrSlice(s []string) *[]string {
-	if s == nil {
-		return nil
-	}
-	return &s
+// stringSetPtr returns a pointer to a client.StringSet built from s, always
+// non-nil so the field is present on the wire (Stalwart requires collection
+// properties to be sent as an object, using {} for "no items"). A nil slice
+// yields a pointer to an empty set.
+func stringSetPtr(s []string) *client.StringSet {
+	set := client.StringSet(s)
+	return &set
 }

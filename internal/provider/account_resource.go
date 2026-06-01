@@ -141,19 +141,14 @@ func (r *accountResource) toAPI(ctx context.Context, m *accountResourceModel, do
 	}
 	acct.Roles = roles
 
-	if memberOf := stringSlice(ctx, m.MemberOf, diags); memberOf != nil {
-		acct.MemberGroupIDs = &memberOf
-	} else {
-		empty := []string{}
-		acct.MemberGroupIDs = &empty
-	}
+	acct.MemberGroupIDs = stringSetPtr(stringSlice(ctx, m.MemberOf, diags))
 
 	if !m.Quota.IsNull() && !m.Quota.IsUnknown() {
 		acct.Quotas = map[string]int64{quotaDisk: m.Quota.ValueInt64()}
 	}
 
 	if pw := strPtr(m.Password); pw != nil {
-		acct.Credentials = &[]client.Credential{{Type: "Password", Secret: pw}}
+		acct.Credentials = &client.IndexList[client.Credential]{{Type: "Password", Secret: pw}}
 	}
 
 	return acct

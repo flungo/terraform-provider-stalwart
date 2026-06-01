@@ -85,9 +85,9 @@ func (r *roleResource) toAPI(ctx context.Context, m *roleResourceModel, diags *f
 	role := &client.Role{
 		Description: strPtr(m.Description),
 	}
-	role.RoleIDs = ptrSlice(stringSlice(ctx, m.Extends, diags))
-	role.EnabledPermissions = ptrSlice(stringSlice(ctx, m.EnabledPermissions, diags))
-	role.DisabledPermissions = ptrSlice(stringSlice(ctx, m.DisabledPermissions, diags))
+	role.RoleIDs = stringSetPtr(stringSlice(ctx, m.Extends, diags))
+	role.EnabledPermissions = stringSetPtr(stringSlice(ctx, m.EnabledPermissions, diags))
+	role.DisabledPermissions = stringSetPtr(stringSlice(ctx, m.DisabledPermissions, diags))
 	return role
 }
 
