@@ -54,7 +54,7 @@ type Container struct {
 func (c *Container) Image() string { return c.image }
 
 // Endpoint returns the base URL of the Stalwart management API (without the
-// trailing /api path, which the provider appends).
+// trailing JMAP path, which the provider appends).
 func (c *Container) Endpoint() string { return c.endpoint }
 
 // AdminUser returns the recovery-administrator username.

@@ -6,8 +6,8 @@ A [Terraform](https://www.terraform.io) provider for the
 
 The provider targets **Stalwart v0.16 and later**, which removed the legacy REST
 management API and now exposes all configuration as
-[JMAP](https://jmap.io) objects through the management API at the `/api`
-endpoint (negotiated via the `urn:stalwart:jmap` capability). See the
+[JMAP](https://jmap.io) objects through the JMAP endpoint at `/jmap`
+(negotiated via the `urn:stalwart:jmap` capability). See the
 [Stalwart schema reference](https://stalw.art/docs/ref/) for the underlying
 object definitions.
 
@@ -29,7 +29,7 @@ terraform {
 }
 
 provider "stalwart" {
-  endpoint = "https://mail.example.com" # base URL; the client appends /api
+  endpoint = "https://mail.example.com" # base URL; the client appends /jmap
   token    = var.stalwart_token         # or set STALWART_TOKEN
 }
 ```
@@ -41,7 +41,7 @@ username/password pair:
 
 | Setting    | Environment variable  | Notes                                          |
 | ---------- | --------------------- | ---------------------------------------------- |
-| `endpoint` | `STALWART_ENDPOINT`   | Base URL of the server. The provider appends `/api`. |
+| `endpoint` | `STALWART_ENDPOINT`   | Base URL of the server. The provider appends `/jmap`. |
 | `token`    | `STALWART_TOKEN`      | Bearer token. Takes precedence over username/password. |
 | `username` | `STALWART_USERNAME`   | HTTP Basic auth username.                       |
 | `password` | `STALWART_PASSWORD`   | HTTP Basic auth password.                       |

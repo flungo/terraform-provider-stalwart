@@ -64,7 +64,7 @@ func (p *StalwartProvider) Schema(_ context.Context, _ provider.SchemaRequest, r
 			"endpoint": schema.StringAttribute{
 				Optional: true,
 				Description: "Base URL of the Stalwart server, e.g. `https://mail.example.com`. " +
-					"The provider appends the `/api` management endpoint. " +
+					"The provider appends the `/jmap` management endpoint. " +
 					"May also be set with the `" + envEndpoint + "` environment variable.",
 			},
 			"token": schema.StringAttribute{

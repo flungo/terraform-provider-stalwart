@@ -5,9 +5,10 @@
 // collaboration server management API (Stalwart v0.16+).
 //
 // Stalwart removed its legacy REST management API in v0.16 and now exposes all
-// configuration as JMAP objects. Management methods are served at the "/api"
-// endpoint (distinct from the "/jmap" endpoint used by mail clients) and are
-// negotiated through the urn:stalwart:jmap capability.
+// configuration as JMAP objects. Management methods are served over JMAP at the
+// "/jmap" endpoint and negotiated through the urn:stalwart:jmap capability. (The
+// "/api" path is a separate, small HTTP API for auth, schema, and telemetry and
+// does not accept JMAP method calls.)
 package client
 
 import (
@@ -21,9 +22,11 @@ import (
 	"time"
 )
 
-// apiPath is the HTTP path of the Stalwart management JMAP endpoint, appended
-// to the configured base endpoint.
-const apiPath = "/api"
+// apiPath is the HTTP path of the Stalwart JMAP endpoint, appended to the
+// configured base endpoint. Management ("x:") objects are served over JMAP at
+// "/jmap"; note this differs from "/api", which is a small separate HTTP API
+// (auth, schema, telemetry) that does not accept JMAP method calls.
+const apiPath = "/jmap"
 
 // Config holds the parameters required to construct a Client.
 type Config struct {

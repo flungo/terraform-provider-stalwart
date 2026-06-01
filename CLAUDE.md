@@ -17,9 +17,15 @@ start fast.
 The original task brief had several inaccuracies; the truth, confirmed from the
 `stalwartlabs/website` docs repo (`src/content/docs/docs/ref/object/*.md`):
 
-- **Endpoint is `/api`**, not `/jmap`. (`/jmap` is the mail-client endpoint; the
-  management JMAP API lives at `/api`.) The client appends `/api` to the
-  configured base endpoint.
+- **JMAP endpoint is `/jmap`** (the client appends it to the configured base
+  endpoint). This was VERIFIED EMPIRICALLY against a live v0.16 container, and
+  contradicts the schema-reference object pages: those pages show JMAP `curl`
+  examples POSTing to `https://mail.example.com/api`, but a real server returns
+  **404** for `POST /api` and **200** for `POST /jmap` with the same JMAP body.
+  `/api/*` is a separate small HTTP API (`/api/auth`, `/api/schema`,
+  telemetry) per `http/index.md` — it does NOT accept JMAP method calls. Trust
+  the hand-written `http/index.md` / `development/api.md` over the generated
+  ref/object curl snippets on the endpoint path.
 - **Capability URN is `urn:stalwart:jmap`** (+ `urn:ietf:params:jmap:core`), not
   `urn:stalwart:core`.
 - **Wire method/type names carry an `x:` prefix**: `x:Domain/get`,
@@ -73,7 +79,7 @@ provider talks to.
   - `STALWART_RECOVERY_ADMIN=admin:<password>` — pins a known admin credential
     (no need to scrape the random bootstrap password from logs).
   - `STALWART_RECOVERY_MODE_PORT` (default `8080`) — the HTTP management port.
-- The management API is then reachable at `http://<host>:8080/api`. The provider
+- The management API is then reachable at `http://<host>:8080/jmap`. The provider
   authenticates with HTTP Basic (`admin:<password>`) or a bearer token.
 - Without `config.json`, the first start instead enters **bootstrap mode**
   (random admin password printed once to stderr, only the `Bootstrap` object
@@ -82,7 +88,8 @@ provider talks to.
 `stalwart-cli apply <plan.json>` loads a batch of create/update/destroy ops in
 dependency order — the intended way to apply fixtures. `stalwart-cli describe`
 explores the schema (useful when extending the provider). The CLI is a separate
-binary (`stalwartlabs/cli`), schema-driven, talks to the same `/api`.
+binary (`stalwartlabs/cli`), schema-driven; it fetches the schema from
+`/api/schema` (the HTTP API) and issues JMAP method calls against `/jmap`.
 
 ## Test/CI ENVIRONMENT CONSTRAINTS (Claude Code on the web)
 
