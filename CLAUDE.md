@@ -40,6 +40,22 @@ The original task brief had several inaccuracies; the truth, confirmed from the
   reference their domain via `domainId` (the ULID), not the domain name.
 - Standard JMAP `Foo/get` | `Foo/set` (create/update/destroy) | `Foo/query`
   semantics throughout. Singletons use the literal id `singleton`.
+- **Collection-valued properties are JSON objects, NOT arrays.** Sending an array
+  is rejected with `invalidPatch: Invalid value for object property`. Two
+  encodings (mirroring the server's Rust `Map<T>` / `List<T>` in
+  `stalwartlabs/stalwart` `crates/registry/src/schema/structs.rs` +
+  `crates/registry/src/types/{map,list}.rs`):
+  - `Map<T>`  -> `{"<value>": true, ...}` (a set keyed by value). Used by:
+    Domain `aliases`; Account/Group `memberGroupIds`; MailingList `recipients`;
+    Role `roleIds`/`enabledPermissions`/`disabledPermissions`; DkimSignature
+    `headers`; nested `roles.roleIds`, permission lists.
+  - `List<T>` -> `{"0": <item>, "1": <item>}` (keyed by stringified index). Used
+    by: Account/Group `credentials` and `aliases` (List<EmailAlias>).
+  - `quotas` is `VecMap<StorageQuota,u64>` -> plain `{"maxDiskQuota": 123}`.
+  The client models these with `StringSet` / `IndexList[T]` (internal/client/
+  collections.go), which marshal empty as `{}` (required-present on create).
+  NOTE: `aliases` is `Map<String>` on Domain but `List<EmailAlias>` on
+  Account/MailingList — same name, different wire type.
 
 ### Reference docs
 

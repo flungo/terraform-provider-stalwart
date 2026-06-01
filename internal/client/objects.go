@@ -42,18 +42,18 @@ type TypedRef struct {
 
 // Domain models the Stalwart Domain object.
 type Domain struct {
-	ID                    *string   `json:"id,omitempty"`
-	Name                  *string   `json:"name,omitempty"`
-	Description           *string   `json:"description,omitempty"`
-	Aliases               *[]string `json:"aliases,omitempty"`
-	IsEnabled             *bool     `json:"isEnabled,omitempty"`
-	CatchAllAddress       *string   `json:"catchAllAddress,omitempty"`
-	AllowRelaying         *bool     `json:"allowRelaying,omitempty"`
-	ReportAddressURI      *string   `json:"reportAddressUri,omitempty"`
-	SubAddressing         *TypedRef `json:"subAddressing,omitempty"`
-	CertificateManagement *TypedRef `json:"certificateManagement,omitempty"`
-	DkimManagement        *TypedRef `json:"dkimManagement,omitempty"`
-	DNSManagement         *TypedRef `json:"dnsManagement,omitempty"`
+	ID                    *string    `json:"id,omitempty"`
+	Name                  *string    `json:"name,omitempty"`
+	Description           *string    `json:"description,omitempty"`
+	Aliases               *StringSet `json:"aliases,omitempty"`
+	IsEnabled             *bool      `json:"isEnabled,omitempty"`
+	CatchAllAddress       *string    `json:"catchAllAddress,omitempty"`
+	AllowRelaying         *bool      `json:"allowRelaying,omitempty"`
+	ReportAddressURI      *string    `json:"reportAddressUri,omitempty"`
+	SubAddressing         *TypedRef  `json:"subAddressing,omitempty"`
+	CertificateManagement *TypedRef  `json:"certificateManagement,omitempty"`
+	DkimManagement        *TypedRef  `json:"dkimManagement,omitempty"`
+	DNSManagement         *TypedRef  `json:"dnsManagement,omitempty"`
 
 	// Server-set, read-only.
 	CreatedAt   *string `json:"createdAt,omitempty"`
@@ -62,16 +62,16 @@ type Domain struct {
 
 // Roles models the UserRoles/Roles tagged union used by accounts and groups.
 type Roles struct {
-	Type    string   `json:"@type"`
-	RoleIDs []string `json:"roleIds,omitempty"`
+	Type    string    `json:"@type"`
+	RoleIDs StringSet `json:"roleIds,omitempty"`
 }
 
 // Permissions models the permission-assignment tagged union for accounts and
 // groups.
 type Permissions struct {
-	Type                string   `json:"@type"`
-	EnabledPermissions  []string `json:"enabledPermissions,omitempty"`
-	DisabledPermissions []string `json:"disabledPermissions,omitempty"`
+	Type                string    `json:"@type"`
+	EnabledPermissions  StringSet `json:"enabledPermissions,omitempty"`
+	DisabledPermissions StringSet `json:"disabledPermissions,omitempty"`
 }
 
 // Credential models an account authentication credential. Only the Password
@@ -84,18 +84,18 @@ type Credential struct {
 // Account models the Stalwart Account object (both the "User" and "Group"
 // variants, discriminated by Type).
 type Account struct {
-	ID               *string          `json:"id,omitempty"`
-	Type             *string          `json:"@type,omitempty"`
-	Name             *string          `json:"name,omitempty"`
-	DomainID         *string          `json:"domainId,omitempty"`
-	EmailAddress     *string          `json:"emailAddress,omitempty"`
-	Description      *string          `json:"description,omitempty"`
-	MemberGroupIDs   *[]string        `json:"memberGroupIds,omitempty"`
-	Roles            *Roles           `json:"roles,omitempty"`
-	Permissions      *Permissions     `json:"permissions,omitempty"`
-	Quotas           map[string]int64 `json:"quotas,omitempty"`
-	Credentials      *[]Credential    `json:"credentials,omitempty"`
-	EncryptionAtRest *TypedRef        `json:"encryptionAtRest,omitempty"`
+	ID               *string                `json:"id,omitempty"`
+	Type             *string                `json:"@type,omitempty"`
+	Name             *string                `json:"name,omitempty"`
+	DomainID         *string                `json:"domainId,omitempty"`
+	EmailAddress     *string                `json:"emailAddress,omitempty"`
+	Description      *string                `json:"description,omitempty"`
+	MemberGroupIDs   *StringSet             `json:"memberGroupIds,omitempty"`
+	Roles            *Roles                 `json:"roles,omitempty"`
+	Permissions      *Permissions           `json:"permissions,omitempty"`
+	Quotas           map[string]int64       `json:"quotas,omitempty"`
+	Credentials      *IndexList[Credential] `json:"credentials,omitempty"`
+	EncryptionAtRest *TypedRef              `json:"encryptionAtRest,omitempty"`
 
 	// Server-set, read-only.
 	CreatedAt     *string `json:"createdAt,omitempty"`
@@ -119,7 +119,7 @@ type DkimSignature struct {
 	PrivateKey       *SecretText `json:"privateKey,omitempty"`
 	Expire           *string     `json:"expire,omitempty"`
 	Canonicalization *string     `json:"canonicalization,omitempty"`
-	Headers          *[]string   `json:"headers,omitempty"`
+	Headers          *StringSet  `json:"headers,omitempty"`
 	Report           *bool       `json:"report,omitempty"`
 
 	// Server-set, read-only.
@@ -138,19 +138,19 @@ type EmailAlias struct {
 
 // MailingList models the Stalwart MailingList object.
 type MailingList struct {
-	ID           *string   `json:"id,omitempty"`
-	Name         *string   `json:"name,omitempty"`
-	DomainID     *string   `json:"domainId,omitempty"`
-	EmailAddress *string   `json:"emailAddress,omitempty"`
-	Description  *string   `json:"description,omitempty"`
-	Recipients   *[]string `json:"recipients,omitempty"`
+	ID           *string    `json:"id,omitempty"`
+	Name         *string    `json:"name,omitempty"`
+	DomainID     *string    `json:"domainId,omitempty"`
+	EmailAddress *string    `json:"emailAddress,omitempty"`
+	Description  *string    `json:"description,omitempty"`
+	Recipients   *StringSet `json:"recipients,omitempty"`
 }
 
 // Role models the Stalwart Role object.
 type Role struct {
-	ID                  *string   `json:"id,omitempty"`
-	Description         *string   `json:"description,omitempty"`
-	RoleIDs             *[]string `json:"roleIds,omitempty"`
-	EnabledPermissions  *[]string `json:"enabledPermissions,omitempty"`
-	DisabledPermissions *[]string `json:"disabledPermissions,omitempty"`
+	ID                  *string    `json:"id,omitempty"`
+	Description         *string    `json:"description,omitempty"`
+	RoleIDs             *StringSet `json:"roleIds,omitempty"`
+	EnabledPermissions  *StringSet `json:"enabledPermissions,omitempty"`
+	DisabledPermissions *StringSet `json:"disabledPermissions,omitempty"`
 }

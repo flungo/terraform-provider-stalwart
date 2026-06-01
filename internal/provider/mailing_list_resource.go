@@ -91,13 +91,7 @@ func (r *mailingListResource) toAPI(ctx context.Context, m *mailingListResourceM
 		DomainID:    &domainID,
 		Description: strPtr(m.Description),
 	}
-	recipients := stringSlice(ctx, m.Recipients, diags)
-	if recipients != nil {
-		list.Recipients = &recipients
-	} else {
-		empty := []string{}
-		list.Recipients = &empty
-	}
+	list.Recipients = stringSetPtr(stringSlice(ctx, m.Recipients, diags))
 	return list
 }
 
