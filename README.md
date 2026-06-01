@@ -155,6 +155,19 @@ make testacc
 > **Warning:** acceptance tests create and destroy objects on the target server.
 > When pointing at your own instance, use a dedicated, disposable one.
 
+### Coverage
+
+`make testacc` writes a coverage profile (`coverage.out`) over the provider and
+client packages. Enforce the minimum threshold and render an HTML report with:
+
+```sh
+make cover-check   # fails if total coverage < COVERAGE_MIN (default 75%)
+make cover-html    # writes coverage.html
+```
+
+CI runs the same check on the acceptance job and uploads the report as an
+artifact; the total is also printed to the job summary.
+
 ## Releasing
 
 Releases are produced by [GoReleaser](https://goreleaser.com) and published to
