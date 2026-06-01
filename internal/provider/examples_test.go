@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/config"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/flungo/terraform-provider-stalwart/internal/client"
 )
@@ -79,6 +80,17 @@ func TestAccExampleMain(t *testing.T) {
 				// the per-resource idempotency tests); only the data-source-driven
 				// output churns, so a non-empty follow-up plan is expected.
 				ExpectNonEmptyPlan: true,
+				// Every managed resource in the example must plan as a Create.
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("stalwart_domain.example", plancheck.ResourceActionCreate),
+						plancheck.ExpectResourceAction("stalwart_dkim_signature.example", plancheck.ResourceActionCreate),
+						plancheck.ExpectResourceAction("stalwart_role.support", plancheck.ResourceActionCreate),
+						plancheck.ExpectResourceAction("stalwart_group.team", plancheck.ResourceActionCreate),
+						plancheck.ExpectResourceAction("stalwart_account.alice", plancheck.ResourceActionCreate),
+						plancheck.ExpectResourceAction("stalwart_mailing_list.announce", plancheck.ResourceActionCreate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("stalwart_domain.example", "name", "example.com"),
 					resource.TestCheckResourceAttrSet("stalwart_dkim_signature.example", "id"),
@@ -153,7 +165,14 @@ func TestAccExampleResources(t *testing.T) {
 					{
 						Config:          cfg,
 						ConfigVariables: vars,
-						Check:           resource.TestCheckResourceAttrSet(tc.checkID, "id"),
+						// The example's resource must plan as a Create on a clean
+						// server (not, say, a no-op or an unexpected replace).
+						ConfigPlanChecks: resource.ConfigPlanChecks{
+							PreApply: []plancheck.PlanCheck{
+								plancheck.ExpectResourceAction(tc.checkID, plancheck.ResourceActionCreate),
+							},
+						},
+						Check: resource.TestCheckResourceAttrSet(tc.checkID, "id"),
 					},
 					// Idempotency: re-planning the same config must be a no-op.
 					// A non-empty plan here means the example would show a
