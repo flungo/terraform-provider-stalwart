@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -249,4 +250,56 @@ func stringSetValue(slice []string) (types.Set, diag.Diagnostics) {
 func stringSetPtr(s []string) *client.StringSet {
 	set := client.StringSet(s)
 	return &set
+}
+
+// durationUnits maps a Stalwart duration suffix to its value in milliseconds,
+// mirroring the server's Duration parser (crates/registry/src/types/duration.rs:
+// d/h/m/s/ms, with an empty suffix meaning milliseconds).
+var durationUnits = map[string]int64{
+	"d":  24 * 60 * 60 * 1000,
+	"h":  60 * 60 * 1000,
+	"m":  60 * 1000,
+	"s":  1000,
+	"ms": 1,
+	"":   1,
+}
+
+// parseDuration converts a Stalwart duration string (e.g. "90d", "1h", "500ms")
+// to milliseconds. Stalwart stores Durations as a u64 of milliseconds on the
+// wire, so the provider accepts the friendly string form and converts it here.
+func parseDuration(s string) (int64, error) {
+	digits, unit := "", ""
+	for _, ch := range s {
+		switch {
+		case ch >= '0' && ch <= '9':
+			digits += string(ch)
+		case ch == ' ' || ch == '\t':
+			// ignored, matching the server
+		default:
+			unit += string(ch | 0x20) // ASCII lowercase
+		}
+	}
+	mult, ok := durationUnits[unit]
+	if !ok {
+		return 0, fmt.Errorf("invalid duration %q: unknown unit %q (use d, h, m, s, or ms)", s, unit)
+	}
+	n, err := strconv.ParseInt(digits, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration %q: %w", s, err)
+	}
+	return n * mult, nil
+}
+
+// formatDuration renders a millisecond count back into the largest whole unit
+// that divides it evenly (so "90d" round-trips), for stable state values.
+func formatDuration(ms int64) string {
+	for _, u := range []struct {
+		suffix string
+		mult   int64
+	}{{"d", durationUnits["d"]}, {"h", durationUnits["h"]}, {"m", durationUnits["m"]}, {"s", durationUnits["s"]}} {
+		if ms%u.mult == 0 {
+			return fmt.Sprintf("%d%s", ms/u.mult, u.suffix)
+		}
+	}
+	return fmt.Sprintf("%dms", ms)
 }
