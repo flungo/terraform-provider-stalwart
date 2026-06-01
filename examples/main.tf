@@ -32,7 +32,7 @@ resource "stalwart_dkim_signature" "example" {
 
 resource "stalwart_role" "support" {
   description         = "Support team role"
-  enabled_permissions = ["email-send", "email-receive"]
+  enabled_permissions = ["emailSend", "emailReceive"]
 }
 
 resource "stalwart_group" "team" {

@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -41,7 +41,7 @@ type domainResourceModel struct {
 	Name                  types.String `tfsdk:"name"`
 	Description           types.String `tfsdk:"description"`
 	Catchall              types.String `tfsdk:"catchall"`
-	Aliases               types.List   `tfsdk:"aliases"`
+	Aliases               types.Set    `tfsdk:"aliases"`
 	Enabled               types.Bool   `tfsdk:"enabled"`
 	Subaddressing         types.String `tfsdk:"subaddressing"`
 	CertificateManagement types.String `tfsdk:"certificate_management"`
@@ -86,13 +86,13 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description: "Catch-all email address that receives messages addressed to unknown " +
 					"local recipients (maps to the `catchAllAddress` field).",
 			},
-			"aliases": schema.ListAttribute{
+			"aliases": schema.SetAttribute{
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "Additional domain names that are aliases of this domain. " +
 					"Defaults to an empty list.",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"enabled": schema.BoolAttribute{
 				Optional:    true,
@@ -172,7 +172,7 @@ func (r *domainResource) toAPI(ctx context.Context, m *domainResourceModel, diag
 		CertificateManagement: managementRef(m.CertificateManagement.ValueString(), m.AcmeProviderID, m.DNSServerID),
 		DNSManagement:         managementRef(m.DNSManagement.ValueString(), m.AcmeProviderID, m.DNSServerID),
 	}
-	d.Aliases = stringSetPtr(stringSlice(ctx, m.Aliases, diags))
+	d.Aliases = stringSetPtr(stringSetSlice(ctx, m.Aliases, diags))
 	return d
 }
 
@@ -216,7 +216,7 @@ func (r *domainResource) fromAPI(m *domainResourceModel, d *client.Domain, diags
 		}
 	}
 
-	aliases, d2 := stringListValue(deref(d.Aliases))
+	aliases, d2 := stringSetValue(deref(d.Aliases))
 	diags.Append(d2...)
 	m.Aliases = aliases
 }

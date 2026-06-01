@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -58,7 +58,7 @@ type dkimSignatureResourceModel struct {
 	PrivateKey       types.String `tfsdk:"private_key"`
 	Expiry           types.String `tfsdk:"expiry"`
 	Canonicalization types.String `tfsdk:"canonicalization"`
-	Headers          types.List   `tfsdk:"headers"`
+	Headers          types.Set    `tfsdk:"headers"`
 	Report           types.Bool   `tfsdk:"report"`
 	PublicKey        types.String `tfsdk:"public_key"`
 	CreatedAt        types.String `tfsdk:"created_at"`
@@ -109,12 +109,12 @@ func (r *dkimSignatureResource) Schema(_ context.Context, _ resource.SchemaReque
 				Default:     stringdefault.StaticString("relaxed/relaxed"),
 				Description: "Canonicalization algorithm. Defaults to `relaxed/relaxed`.",
 			},
-			"headers": schema.ListAttribute{
+			"headers": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Message headers to include in the DKIM signature. Defaults to a standard set.",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"report": schema.BoolAttribute{
 				Optional:    true,
@@ -150,7 +150,7 @@ func (r *dkimSignatureResource) toAPI(ctx context.Context, m *dkimSignatureResou
 		Canonicalization: strPtr(m.Canonicalization),
 		Report:           boolPtr(m.Report),
 	}
-	if headers := stringSlice(ctx, m.Headers, diags); headers != nil {
+	if headers := stringSetSlice(ctx, m.Headers, diags); headers != nil {
 		sig.Headers = stringSetPtr(headers)
 	}
 	return sig
@@ -173,7 +173,7 @@ func (r *dkimSignatureResource) fromAPI(m *dkimSignatureResourceModel, sig *clie
 	m.PublicKey = strValue(sig.PublicKey)
 	m.CreatedAt = strValue(sig.CreatedAt)
 
-	headers, d := stringListValue(deref(sig.Headers))
+	headers, d := stringSetValue(deref(sig.Headers))
 	diags.Append(d...)
 	m.Headers = headers
 }

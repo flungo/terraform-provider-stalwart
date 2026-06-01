@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -43,7 +43,7 @@ type groupResourceModel struct {
 	Description   types.String `tfsdk:"description"`
 	Quota         types.Int64  `tfsdk:"quota"`
 	Role          types.String `tfsdk:"role"`
-	RoleIDs       types.List   `tfsdk:"role_ids"`
+	RoleIDs       types.Set    `tfsdk:"role_ids"`
 	CreatedAt     types.String `tfsdk:"created_at"`
 	UsedDiskQuota types.Int64  `tfsdk:"used_disk_quota"`
 }
@@ -93,12 +93,12 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Default:     stringdefault.StaticString("Default"),
 				Description: "Built-in role for the group: `Default` or `Custom`. Defaults to `Default`.",
 			},
-			"role_ids": schema.ListAttribute{
+			"role_ids": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Custom role ids assigned to the group, used when `role` is `Custom`.",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
@@ -123,7 +123,7 @@ func (r *groupResource) toAPI(ctx context.Context, m *groupResourceModel, domain
 	}
 
 	roles := &client.Roles{Type: m.Role.ValueString()}
-	if roleIDs := stringSlice(ctx, m.RoleIDs, diags); roleIDs != nil {
+	if roleIDs := stringSetSlice(ctx, m.RoleIDs, diags); roleIDs != nil {
 		roles.RoleIDs = roleIDs
 	}
 	grp.Roles = roles
@@ -145,7 +145,7 @@ func (r *groupResource) fromAPI(m *groupResourceModel, grp *client.Account, diag
 
 	if grp.Roles != nil {
 		m.Role = types.StringValue(grp.Roles.Type)
-		roleIDs, d := stringListValue(grp.Roles.RoleIDs)
+		roleIDs, d := stringSetValue(grp.Roles.RoleIDs)
 		diags.Append(d...)
 		m.RoleIDs = roleIDs
 	}

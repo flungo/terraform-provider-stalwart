@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -47,8 +47,8 @@ type accountResourceModel struct {
 	Password      types.String `tfsdk:"password"`
 	Quota         types.Int64  `tfsdk:"quota"`
 	Role          types.String `tfsdk:"role"`
-	RoleIDs       types.List   `tfsdk:"role_ids"`
-	MemberOf      types.List   `tfsdk:"member_of"`
+	RoleIDs       types.Set    `tfsdk:"role_ids"`
+	MemberOf      types.Set    `tfsdk:"member_of"`
 	CreatedAt     types.String `tfsdk:"created_at"`
 	UsedDiskQuota types.Int64  `tfsdk:"used_disk_quota"`
 }
@@ -103,19 +103,19 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Default:     stringdefault.StaticString("User"),
 				Description: "Built-in role for the account: `User`, `Admin`, or `Custom`. Defaults to `User`.",
 			},
-			"role_ids": schema.ListAttribute{
+			"role_ids": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Custom role ids assigned to the account, used when `role` is `Custom`.",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
-			"member_of": schema.ListAttribute{
+			"member_of": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Ids of groups this account is a member of (maps to `memberGroupIds`).",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
@@ -141,12 +141,12 @@ func (r *accountResource) toAPI(ctx context.Context, m *accountResourceModel, do
 	}
 
 	roles := &client.Roles{Type: m.Role.ValueString()}
-	if roleIDs := stringSlice(ctx, m.RoleIDs, diags); roleIDs != nil {
+	if roleIDs := stringSetSlice(ctx, m.RoleIDs, diags); roleIDs != nil {
 		roles.RoleIDs = roleIDs
 	}
 	acct.Roles = roles
 
-	acct.MemberGroupIDs = stringSetPtr(stringSlice(ctx, m.MemberOf, diags))
+	acct.MemberGroupIDs = stringSetPtr(stringSetSlice(ctx, m.MemberOf, diags))
 
 	if !m.Quota.IsNull() && !m.Quota.IsUnknown() {
 		acct.Quotas = map[string]int64{quotaDisk: m.Quota.ValueInt64()}
@@ -172,12 +172,12 @@ func (r *accountResource) fromAPI(m *accountResourceModel, acct *client.Account,
 
 	if acct.Roles != nil {
 		m.Role = types.StringValue(acct.Roles.Type)
-		roleIDs, d := stringListValue(acct.Roles.RoleIDs)
+		roleIDs, d := stringSetValue(acct.Roles.RoleIDs)
 		diags.Append(d...)
 		m.RoleIDs = roleIDs
 	}
 
-	memberOf, d := stringListValue(deref(acct.MemberGroupIDs))
+	memberOf, d := stringSetValue(deref(acct.MemberGroupIDs))
 	diags.Append(d...)
 	m.MemberOf = memberOf
 

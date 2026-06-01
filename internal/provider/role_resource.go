@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -37,9 +37,9 @@ type roleResource struct {
 type roleResourceModel struct {
 	ID                  types.String `tfsdk:"id"`
 	Description         types.String `tfsdk:"description"`
-	Extends             types.List   `tfsdk:"extends"`
-	EnabledPermissions  types.List   `tfsdk:"enabled_permissions"`
-	DisabledPermissions types.List   `tfsdk:"disabled_permissions"`
+	Extends             types.Set    `tfsdk:"extends"`
+	EnabledPermissions  types.Set    `tfsdk:"enabled_permissions"`
+	DisabledPermissions types.Set    `tfsdk:"disabled_permissions"`
 }
 
 func (r *roleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -63,26 +63,26 @@ func (r *roleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Required:    true,
 				Description: "Description of the role. This is the role's human-facing identifier.",
 			},
-			"extends": schema.ListAttribute{
+			"extends": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Ids of roles this role extends (maps to `roleIds`).",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
-			"enabled_permissions": schema.ListAttribute{
+			"enabled_permissions": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Permissions explicitly enabled by this role.",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
-			"disabled_permissions": schema.ListAttribute{
+			"disabled_permissions": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Permissions explicitly disabled by this role; takes precedence over enabled permissions.",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}
@@ -92,9 +92,9 @@ func (r *roleResource) toAPI(ctx context.Context, m *roleResourceModel, diags *f
 	role := &client.Role{
 		Description: strPtr(m.Description),
 	}
-	role.RoleIDs = stringSetPtr(stringSlice(ctx, m.Extends, diags))
-	role.EnabledPermissions = stringSetPtr(stringSlice(ctx, m.EnabledPermissions, diags))
-	role.DisabledPermissions = stringSetPtr(stringSlice(ctx, m.DisabledPermissions, diags))
+	role.RoleIDs = stringSetPtr(stringSetSlice(ctx, m.Extends, diags))
+	role.EnabledPermissions = stringSetPtr(stringSetSlice(ctx, m.EnabledPermissions, diags))
+	role.DisabledPermissions = stringSetPtr(stringSetSlice(ctx, m.DisabledPermissions, diags))
 	return role
 }
 
@@ -102,15 +102,15 @@ func (r *roleResource) fromAPI(m *roleResourceModel, role *client.Role, diags *f
 	m.ID = strValue(role.ID)
 	m.Description = strValue(role.Description)
 
-	extends, d := stringListValue(deref(role.RoleIDs))
+	extends, d := stringSetValue(deref(role.RoleIDs))
 	diags.Append(d...)
 	m.Extends = extends
 
-	enabled, d := stringListValue(deref(role.EnabledPermissions))
+	enabled, d := stringSetValue(deref(role.EnabledPermissions))
 	diags.Append(d...)
 	m.EnabledPermissions = enabled
 
-	disabled, d := stringListValue(deref(role.DisabledPermissions))
+	disabled, d := stringSetValue(deref(role.DisabledPermissions))
 	diags.Append(d...)
 	m.DisabledPermissions = disabled
 }

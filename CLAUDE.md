@@ -93,6 +93,25 @@ against code (`stalwart-src`) and docs (`website`):
   non-`Option` in the structs so the server always returns them (as `{}` → an
   empty list on read). Such attributes use `Optional + Computed` with a
   `UseStateForUnknown` plan modifier in this provider.
+- **`Map<T>` fields are unordered sets → model them as `types.Set`, not
+  `types.List`.** The server stores `Map<T>` as a set and returns it in a
+  canonical (sorted) order, so a `types.List` attribute trips "inconsistent
+  result after apply" whenever config order ≠ server order (seen with role
+  `enabledPermissions`: config `[emailSend, emailReceive]`, read back
+  `[emailReceive, emailSend]`). Every `Map<T>`-backed attribute is a
+  `SetAttribute`: domain `aliases`; account/group `member_of`/`role_ids`;
+  mailing_list `recipients`; role `extends`/`enabled_permissions`/
+  `disabled_permissions`; dkim `headers`. (`List<T>` fields like account
+  `credentials` are genuinely ordered and stay lists.)
+- **Domain names must have a real/recognised TLD.** `is_valid_domain`
+  (`stalwart-src/crates/utils/src/lib.rs:356`) accepts a name only if its TLD is
+  a public-suffix-list entry OR one of the reserved TLDs `test`, `localhost`,
+  `local`, `internal`. `.example` is rejected (`invalidPatch: Invalid domain
+  name`); acceptance tests use `*.test`.
+- **Permission values are camelCase JMAP identifiers** (e.g. `emailSend`,
+  `emailReceive`), not kebab-case. VERIFIED:
+  `crates/registry/src/schema/enums_impl.rs` (`Permission::EmailSend =>
+  "emailSend"`).
 
 ### Reference docs
 

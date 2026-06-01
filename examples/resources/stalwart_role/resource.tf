@@ -1,7 +1,7 @@
 resource "stalwart_role" "support" {
   description          = "Support team role"
-  enabled_permissions  = ["email-send", "email-receive"]
-  disabled_permissions = ["settings-list"]
+  enabled_permissions  = ["emailSend", "emailReceive"]
+  disabled_permissions = ["settingsList"]
 }
 
 # Import an existing role by its description:
