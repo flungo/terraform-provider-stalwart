@@ -16,7 +16,7 @@ import (
 // verifies every writable field in state and on the server.
 func TestAccGroupResource(t *testing.T) {
 	c := accClient(t)
-	const domain = "tf-acc-group.example"
+	const domain = "tf-acc-group.test"
 	const resourceName = "stalwart_group.test"
 
 	resource.Test(t, resource.TestCase{

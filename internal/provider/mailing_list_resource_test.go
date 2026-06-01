@@ -16,7 +16,7 @@ import (
 // lifecycle and verifies every writable field in state and on the server.
 func TestAccMailingListResource(t *testing.T) {
 	c := accClient(t)
-	const domain = "tf-acc-list.example"
+	const domain = "tf-acc-list.test"
 	const resourceName = "stalwart_mailing_list.test"
 
 	resource.Test(t, resource.TestCase{

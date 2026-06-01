@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -41,7 +41,7 @@ type mailingListResourceModel struct {
 	Domain       types.String `tfsdk:"domain"`
 	EmailAddress types.String `tfsdk:"email_address"`
 	Description  types.String `tfsdk:"description"`
-	Recipients   types.List   `tfsdk:"recipients"`
+	Recipients   types.Set    `tfsdk:"recipients"`
 }
 
 func (r *mailingListResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -77,12 +77,12 @@ func (r *mailingListResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:    true,
 				Description: "Human-readable description of the mailing list.",
 			},
-			"recipients": schema.ListAttribute{
+			"recipients": schema.SetAttribute{
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
 				Description:   "Email addresses that are members of the mailing list.",
-				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}
@@ -94,7 +94,7 @@ func (r *mailingListResource) toAPI(ctx context.Context, m *mailingListResourceM
 		DomainID:    &domainID,
 		Description: strPtr(m.Description),
 	}
-	list.Recipients = stringSetPtr(stringSlice(ctx, m.Recipients, diags))
+	list.Recipients = stringSetPtr(stringSetSlice(ctx, m.Recipients, diags))
 	return list
 }
 
@@ -105,7 +105,7 @@ func (r *mailingListResource) fromAPI(m *mailingListResourceModel, list *client.
 	m.EmailAddress = strValue(list.EmailAddress)
 	m.Description = strValue(list.Description)
 
-	recipients, d := stringListValue(deref(list.Recipients))
+	recipients, d := stringSetValue(deref(list.Recipients))
 	diags.Append(d...)
 	m.Recipients = recipients
 }

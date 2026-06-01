@@ -23,7 +23,7 @@ import (
 // from state via ImportStateIdFunc.
 func TestAccDkimSignatureResource(t *testing.T) {
 	c := accClient(t)
-	const domain = "tf-acc-dkim.example"
+	const domain = "tf-acc-dkim.test"
 	const resourceName = "stalwart_dkim_signature.test"
 	privateKey := generateEd25519PEM(t)
 

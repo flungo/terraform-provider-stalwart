@@ -206,14 +206,16 @@ func int64Value(p *int64) types.Int64 {
 	return types.Int64Value(*p)
 }
 
-// stringSlice converts a Terraform list of strings to a Go slice. A null or
-// unknown list yields a nil slice.
-func stringSlice(ctx context.Context, list types.List, diags *diag.Diagnostics) []string {
-	if list.IsNull() || list.IsUnknown() {
+// stringSetSlice converts a Terraform set of strings to a Go slice. A null or
+// unknown set yields a nil slice. Used for collection properties the server
+// stores unordered (Stalwart `Map<T>`), which are modelled as `types.Set` so
+// that config order is not significant.
+func stringSetSlice(ctx context.Context, set types.Set, diags *diag.Diagnostics) []string {
+	if set.IsNull() || set.IsUnknown() {
 		return nil
 	}
 	var out []string
-	diags.Append(list.ElementsAs(ctx, &out, false)...)
+	diags.Append(set.ElementsAs(ctx, &out, false)...)
 	return out
 }
 
@@ -224,6 +226,15 @@ func stringListValue(slice []string) (types.List, diag.Diagnostics) {
 		return types.ListNull(types.StringType), nil
 	}
 	return types.ListValueFrom(context.Background(), types.StringType, slice)
+}
+
+// stringSetValue converts a Go slice to a Terraform set of strings, mapping a
+// nil slice to a null set.
+func stringSetValue(slice []string) (types.Set, diag.Diagnostics) {
+	if slice == nil {
+		return types.SetNull(types.StringType), nil
+	}
+	return types.SetValueFrom(context.Background(), types.StringType, slice)
 }
 
 // stringSetPtr returns a pointer to a client.StringSet built from s, always

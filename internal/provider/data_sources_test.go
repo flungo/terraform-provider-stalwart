@@ -13,7 +13,7 @@ import (
 // TestAccDomainDataSource verifies that the domain data source reads a domain by
 // name and exposes its fields.
 func TestAccDomainDataSource(t *testing.T) {
-	const domain = "tf-acc-ds-domain.example"
+	const domain = "tf-acc-ds-domain.test"
 	const dsName = "data.stalwart_domain.test"
 
 	resource.Test(t, resource.TestCase{
@@ -49,7 +49,7 @@ data "stalwart_domain" "test" {
 // TestAccAccountDataSource verifies that the account data source reads an account
 // by email address.
 func TestAccAccountDataSource(t *testing.T) {
-	const domain = "tf-acc-ds-account.example"
+	const domain = "tf-acc-ds-account.test"
 	const dsName = "data.stalwart_account.test"
 
 	resource.Test(t, resource.TestCase{
@@ -90,7 +90,7 @@ data "stalwart_account" "test" {
 // TestAccDNSRecordsDataSource verifies that the DNS records data source returns
 // the domain's zone file.
 func TestAccDNSRecordsDataSource(t *testing.T) {
-	const domain = "tf-acc-ds-dns.example"
+	const domain = "tf-acc-ds-dns.test"
 	const dsName = "data.stalwart_dns_records.test"
 
 	resource.Test(t, resource.TestCase{

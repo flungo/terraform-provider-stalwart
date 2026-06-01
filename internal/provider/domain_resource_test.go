@@ -19,7 +19,7 @@ import (
 // provider's own read path).
 func TestAccDomainResource(t *testing.T) {
 	c := accClient(t)
-	const name = "tf-acc-domain.example"
+	const name = "tf-acc-domain.test"
 	const resourceName = "stalwart_domain.test"
 
 	resource.Test(t, resource.TestCase{
@@ -35,8 +35,8 @@ func TestAccDomainResource(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "description", "initial description"),
 					resource.TestCheckResourceAttr(resourceName, "catchall", "postmaster@"+name),
 					resource.TestCheckResourceAttr(resourceName, "aliases.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "aliases.0", "alias1."+name),
-					resource.TestCheckResourceAttr(resourceName, "aliases.1", "alias2."+name),
+					resource.TestCheckTypeSetElemAttr(resourceName, "aliases.*", "alias1."+name),
+					resource.TestCheckTypeSetElemAttr(resourceName, "aliases.*", "alias2."+name),
 					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
 					resource.TestCheckResourceAttr(resourceName, "subaddressing", "Disabled"),
 					resource.TestCheckResourceAttr(resourceName, "allow_relaying", "true"),
@@ -75,7 +75,7 @@ func TestAccDomainResource(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "description", "updated description"),
 					resource.TestCheckResourceAttr(resourceName, "catchall", "hostmaster@"+name),
 					resource.TestCheckResourceAttr(resourceName, "aliases.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "aliases.0", "alias3."+name),
+					resource.TestCheckTypeSetElemAttr(resourceName, "aliases.*", "alias3."+name),
 					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "allow_relaying", "false"),
 					checkServerDomain(c, resourceName, func(d client.Domain) error {
@@ -98,7 +98,7 @@ func TestAccDomainResource(t *testing.T) {
 // plan, and optional-unset fields must read back as null/empty.
 func TestAccDomainResourceMinimal(t *testing.T) {
 	c := accClient(t)
-	const name = "tf-acc-domain-min.example"
+	const name = "tf-acc-domain-min.test"
 	const resourceName = "stalwart_domain.test"
 
 	resource.Test(t, resource.TestCase{

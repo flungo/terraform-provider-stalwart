@@ -16,7 +16,7 @@ import (
 // and verifies every writable field in Terraform state and on the server.
 func TestAccAccountResource(t *testing.T) {
 	c := accClient(t)
-	const domain = "tf-acc-account.example"
+	const domain = "tf-acc-account.test"
 	const resourceName = "stalwart_account.test"
 	const groupName = "stalwart_group.team"
 
