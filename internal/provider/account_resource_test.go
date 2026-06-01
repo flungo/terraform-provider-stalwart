@@ -57,18 +57,24 @@ func TestAccAccountResource(t *testing.T) {
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"password", "domain"},
 			},
-			// Update mutable fields: description, quota, role back to User.
+			// Update mutable fields: description, quota, role back to User, and
+			// clear the collections. member_of/role_ids are cleared explicitly
+			// with [] — omitting a Computed collection keeps its prior value, so
+			// an explicit empty set is required to actually remove the links
+			// (and to let the group be destroyed cleanly at teardown).
 			{
 				Config: testAccAccountConfigSimpleRole(domain, "Alice Updated", 1073741824),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "Alice Updated"),
 					resource.TestCheckResourceAttr(resourceName, "quota", "1073741824"),
 					resource.TestCheckResourceAttr(resourceName, "role", "User"),
+					resource.TestCheckResourceAttr(resourceName, "member_of.#", "0"),
 					checkServerAccount(c, resourceName, func(a client.Account) error {
 						return firstErr(
 							wantStr("description", a.Description, "Alice Updated"),
 							wantQuota("maxDiskQuota", a.Quotas, 1073741824),
 							wantRoleType(a.Roles, "User"),
+							wantSet("memberGroupIds", a.MemberGroupIDs),
 						)
 					}),
 				),
@@ -107,8 +113,10 @@ resource "stalwart_account" "test" {
 `, domain, description, quota, name)
 }
 
-// testAccAccountConfigSimpleRole drops the custom role/membership and uses the
-// built-in User role, to exercise updates that clear collections.
+// testAccAccountConfigSimpleRole switches to the built-in User role and clears
+// the custom role ids and group membership with explicit empty sets, exercising
+// updates that remove collection values (and unlinking the group so it can be
+// destroyed at teardown).
 func testAccAccountConfigSimpleRole(domain, description string, quota int64) string {
 	return fmt.Sprintf(`
 resource "stalwart_domain" "test" {
@@ -131,6 +139,8 @@ resource "stalwart_account" "test" {
   password    = "correct-horse-battery-staple-42"
   quota       = %[3]d
   role        = "User"
+  role_ids    = []
+  member_of   = []
 }
 `, domain, description, quota)
 }
