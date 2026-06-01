@@ -146,9 +146,16 @@ func (r *dkimSignatureResource) toAPI(ctx context.Context, m *dkimSignatureResou
 		DomainID:         &domainID,
 		Selector:         strPtr(m.Selector),
 		PrivateKey:       &client.SecretText{Type: "Text", Secret: strPtr(m.PrivateKey)},
-		Expire:           strPtr(m.Expiry),
 		Canonicalization: strPtr(m.Canonicalization),
 		Report:           boolPtr(m.Report),
+	}
+	if s := strPtr(m.Expiry); s != nil {
+		ms, err := parseDuration(*s)
+		if err != nil {
+			diags.AddError("Invalid DKIM expiry", err.Error())
+			return nil
+		}
+		sig.Expire = &ms
 	}
 	if headers := stringSetSlice(ctx, m.Headers, diags); headers != nil {
 		sig.Headers = stringSetPtr(headers)
@@ -167,7 +174,11 @@ func (r *dkimSignatureResource) fromAPI(m *dkimSignatureResourceModel, sig *clie
 			m.Algorithm = types.StringValue(alg)
 		}
 	}
-	m.Expiry = strValue(sig.Expire)
+	if sig.Expire != nil {
+		m.Expiry = types.StringValue(formatDuration(*sig.Expire))
+	} else {
+		m.Expiry = types.StringNull()
+	}
 	m.Canonicalization = strValue(sig.Canonicalization)
 	m.Report = boolValue(sig.Report)
 	m.PublicKey = strValue(sig.PublicKey)

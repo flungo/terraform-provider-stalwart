@@ -71,6 +71,14 @@ func TestAccExampleMain(t *testing.T) {
 					"dkim_private_key": config.StringVariable(generateEd25519PEM(t)),
 					"alice_password":   config.StringVariable(strongPassword),
 				},
+				// main.tf outputs the domain's dns_zone_file, read through the
+				// data source. That field is server-computed and volatile (it
+				// embeds the live hostname and a timestamp-based MTA-STS id), so a
+				// post-apply re-read legitimately changes the output value. The
+				// managed resources themselves are stable (asserted here and by
+				// the per-resource idempotency tests); only the data-source-driven
+				// output churns, so a non-empty follow-up plan is expected.
+				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("stalwart_domain.example", "name", "example.com"),
 					resource.TestCheckResourceAttrSet("stalwart_dkim_signature.example", "id"),
@@ -137,14 +145,25 @@ func TestAccExampleResources(t *testing.T) {
 				// Generate the signing key per run so no secret is embedded.
 				vars = config.Variables{"dkim_private_key": config.StringVariable(generateEd25519PEM(t))}
 			}
+			cfg := tc.fixture + readExample(t, tc.file)
 			resource.Test(t, resource.TestCase{
 				PreCheck:                 func() { testAccPreCheck(t) },
 				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 				Steps: []resource.TestStep{
 					{
-						Config:          tc.fixture + readExample(t, tc.file),
+						Config:          cfg,
 						ConfigVariables: vars,
 						Check:           resource.TestCheckResourceAttrSet(tc.checkID, "id"),
+					},
+					// Idempotency: re-planning the same config must be a no-op.
+					// A non-empty plan here means the example would show a
+					// perpetual diff for users (a server default not reflected,
+					// a normalised value, etc.).
+					{
+						Config:             cfg,
+						ConfigVariables:    vars,
+						PlanOnly:           true,
+						ExpectNonEmptyPlan: false,
 					},
 				},
 			})

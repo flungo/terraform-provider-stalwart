@@ -121,9 +121,19 @@ against code (`stalwart-src`) and docs (`website`):
   `local`, `internal`. `.example` is rejected (`invalidPatch: Invalid domain
   name`); acceptance tests use `*.test`.
 - **Permission values are camelCase JMAP identifiers** (e.g. `emailSend`,
-  `emailReceive`), not kebab-case. VERIFIED:
+  `emailReceive`, `impersonate`), not kebab-case, and must be real enum
+  variants — `settingsList` does NOT exist and is rejected with `invalidPatch:
+  Invalid key for object property`. VERIFIED:
   `crates/registry/src/schema/enums_impl.rs` (`Permission::EmailSend =>
-  "emailSend"`).
+  "emailSend"`); the full list is the `Permission` enum in
+  `crates/registry/src/schema/enums.rs`.
+- **`Duration` fields are a u64 of milliseconds on the wire**, NOT a string.
+  Sending `"90d"` is rejected (`invalidPatch: Invalid path for Duration`).
+  VERIFIED: `crates/registry/src/types/duration.rs` (serialize/deserialize as
+  `u64` millis). The provider accepts the friendly string form (`90d`, `1h`,
+  `500ms`; units d/h/m/s/ms, empty = ms — matching the server's `FromStr`) and
+  converts to/from milliseconds (`parseDuration`/`formatDuration`). Applies to
+  dkim `expiry` (`expire`).
 
 ### Reference docs
 

@@ -117,7 +117,7 @@ type DkimSignature struct {
 	DomainID         *string     `json:"domainId,omitempty"`
 	Selector         *string     `json:"selector,omitempty"`
 	PrivateKey       *SecretText `json:"privateKey,omitempty"`
-	Expire           *string     `json:"expire,omitempty"`
+	Expire           *int64      `json:"expire,omitempty"` // milliseconds (Stalwart Duration)
 	Canonicalization *string     `json:"canonicalization,omitempty"`
 	Headers          *StringSet  `json:"headers,omitempty"`
 	Report           *bool       `json:"report,omitempty"`

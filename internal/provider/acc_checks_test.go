@@ -163,6 +163,17 @@ func wantBool(field string, got *bool, want bool) error {
 	return nil
 }
 
+// wantExpire asserts that a *int64 millisecond field equals want.
+func wantExpire(field string, got *int64, want int64) error {
+	if got == nil {
+		return fmt.Errorf("%s: got nil, want %d", field, want)
+	}
+	if *got != want {
+		return fmt.Errorf("%s: got %d, want %d", field, *got, want)
+	}
+	return nil
+}
+
 // wantQuota asserts that the quotas map has key with value want.
 func wantQuota(key string, quotas map[string]int64, want int64) error {
 	got, ok := quotas[key]

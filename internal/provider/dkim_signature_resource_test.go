@@ -40,6 +40,7 @@ func TestAccDkimSignatureResource(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "canonicalization", "simple/simple"),
 					resource.TestCheckResourceAttr(resourceName, "report", "false"),
 					resource.TestCheckResourceAttr(resourceName, "headers.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "expiry", "90d"),
 					resource.TestCheckResourceAttrSet(resourceName, "public_key"),
 					checkServerDkim(c, resourceName, func(sig client.DkimSignature) error {
 						return firstErr(
@@ -48,6 +49,7 @@ func TestAccDkimSignatureResource(t *testing.T) {
 							wantStr("canonicalization", sig.Canonicalization, "simple/simple"),
 							wantBool("report", sig.Report, false),
 							wantSet("headers", sig.Headers, "From", "To", "Subject"),
+							wantExpire("expire", sig.Expire, 90*24*60*60*1000),
 						)
 					}),
 				),
@@ -122,6 +124,7 @@ resource "stalwart_dkim_signature" "test" {
   canonicalization = %[4]q
   headers          = [%[5]s]
   report           = %[6]t
+  expiry           = "90d"
 }
 `, domain, selector, strings.TrimSpace(privateKey)+"\n", canon, quotedHeaders, report)
 }
