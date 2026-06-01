@@ -108,6 +108,30 @@ laptop or CI runner will differ.
   also hit a separate rate limit ("unauthenticated pull rate limit").
 - Go module proxy (`proxy.golang.org`) and `github.com` are reachable.
 
+### DECISION: iterate acceptance tests via CI, not locally (2026-06-01)
+
+Running the acceptance harness *locally in this Claude Code web environment* is
+**deferred**. The blocker is pulling the Stalwart image:
+
+- The `*.githubusercontent.com` wildcard was added to the allowlist and works for
+  sibling subdomains (`objects`/`avatars`/`camo` all pass), but
+  `pkg-containers.githubusercontent.com` (GHCR blob host) remains specifically
+  denied — the proxy returns `403` with header `x-deny-reason: host_not_allowed`,
+  i.e. a more specific rule shadows the wildcard. An explicit entry was requested
+  but had not taken effect within the session.
+- Docker Hub's CDN (`production.cloudfront.docker.com`) was unblocked, but
+  anonymous pulls from the shared egress IP hit Docker Hub's
+  unauthenticated **rate limit** (even `hello-world` fails). Would need a
+  `docker login` with a Docker Hub token to get past it.
+
+Decision: rather than keep fighting the environment, **rely on GitHub Actions**
+for acceptance-test execution. GitHub-hosted runners ship Docker and pull public
+images without these restrictions. The workflow runs the `testacc` job on every
+PR/push; iterate by reading the Actions job logs and pushing fixes until green.
+Revisit local execution only if/when the registry block is lifted (re-check with
+`curl -D - https://pkg-containers.githubusercontent.com/` — absence of the
+`x-deny-reason` header means it's reachable, then `docker pull` should work).
+
 ## Tooling versions / gotchas
 
 - `.golangci.yml` is **golangci-lint v2 config format** (`version: "2"`). This

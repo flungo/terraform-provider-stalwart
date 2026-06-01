@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MPL-2.0
 #
 # Continuous integration: build, vet, lint, and unit-test the provider on every
-# push and pull request. Acceptance tests (which require a live Stalwart
-# instance) are not run here.
+# push and pull request, plus acceptance tests against a disposable Stalwart
+# container booted by the in-process test harness.
 name: test
 
 on:
@@ -52,3 +52,86 @@ jobs:
           go-version-file: "go.mod"
           cache: true
       - run: go test ./... -timeout=120s
+
+  # Acceptance tests boot a throwaway Stalwart container via the in-process
+  # harness (internal/acctest). GitHub-hosted runners ship with Docker and can
+  # pull public images, so no services: block or extra setup is required.
+  testacc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Allow the diagnostics step to post the container startup log back to the
+      # PR on failure, so failures are debuggable without downloading artifacts.
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Stalwart versions to test against. Extend this list to widen coverage.
+        stalwart: ["v0.16"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - name: Acceptance tests
+        env:
+          TF_ACC: "1"
+          STALWART_TEST_IMAGE: "stalwartlabs/stalwart:${{ matrix.stalwart }}"
+          STALWART_TEST_LOG_DIR: "${{ runner.temp }}/stalwart-logs"
+        run: |
+          mkdir -p "${{ runner.temp }}/stalwart-logs"
+          set -o pipefail
+          go test ./internal/provider/... -v -timeout=30m 2>&1 \
+            | tee "${{ runner.temp }}/stalwart-logs/go-test.log"
+      - name: Upload Stalwart diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stalwart-logs-${{ matrix.stalwart }}
+          path: ${{ runner.temp }}/stalwart-logs/
+          if-no-files-found: ignore
+      - name: Surface diagnostics in job summary
+        if: failure()
+        run: |
+          dir="${{ runner.temp }}/stalwart-logs"
+          {
+            echo "## Stalwart acceptance test diagnostics (${{ matrix.stalwart }})"
+            echo '### Container startup log'
+            echo '```'
+            if [ -f "$dir/stalwart-startup.log" ]; then cat "$dir/stalwart-startup.log"; else echo "(none - container started ok)"; fi
+            echo '```'
+            echo '### go test output (tail)'
+            echo '```'
+            if [ -f "$dir/go-test.log" ]; then tail -n 100 "$dir/go-test.log"; else echo "(no test output)"; fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment diagnostics on PR
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const dir = `${process.env.RUNNER_TEMP}/stalwart-logs`;
+            const read = (f) => { try { return fs.readFileSync(`${dir}/${f}`, 'utf8'); } catch (e) { return ''; } };
+            const startup = read('stalwart-startup.log');
+            const serverLog = read('stalwart-server.log');
+            let testOut = read('go-test.log');
+            // Keep the most relevant (final) portion of the test output.
+            if (testOut.length > 40000) testOut = '...(truncated)\n' + testOut.slice(-40000);
+            let server = serverLog;
+            if (server.length > 10000) server = '...(truncated)\n' + server.slice(-10000);
+            const body = (startup ? `--- container startup ---\n${startup}\n\n` : '(container started ok)\n\n')
+              + `--- go test output ---\n${testOut || '(none)'}\n\n`
+              + `--- stalwart server log (tail) ---\n${server || '(none)'}`;
+            const marker = `<!-- stalwart-testacc-diagnostics-${{ matrix.stalwart }} -->`;
+            const content = `${marker}\n### Stalwart \`testacc (${{ matrix.stalwart }})\` failed\n\n\`\`\`\n${body}\n\`\`\``;
+            const {owner, repo} = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({owner, repo, issue_number});
+            const existing = comments.data.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({owner, repo, comment_id: existing.id, body: content});
+            } else {
+              await github.rest.issues.createComment({owner, repo, issue_number, body: content});
+            }
