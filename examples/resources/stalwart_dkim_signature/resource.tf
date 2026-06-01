@@ -6,5 +6,5 @@ resource "stalwart_dkim_signature" "example" {
   expiry      = "90d"
 }
 
-# Import an existing DKIM signature by its opaque id (ULID):
-# terraform import stalwart_dkim_signature.example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+# Import an existing DKIM signature by its opaque id:
+# terraform import stalwart_dkim_signature.example itxnfyrwaaaa

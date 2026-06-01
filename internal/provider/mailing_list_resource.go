@@ -58,7 +58,7 @@ func (r *mailingListResource) Schema(_ context.Context, _ resource.SchemaRequest
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Opaque server-assigned identifier (ULID) of the mailing list.",
+				Description:   "Opaque server-assigned identifier of the mailing list.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
@@ -210,11 +210,11 @@ func (r *mailingListResource) Delete(ctx context.Context, req resource.DeleteReq
 }
 
 // ImportState imports a mailing list by its email address or by its opaque id
-// (ULID). The MailingList/query method only exposes a free-text filter (no
-// name/domainId conditions), so a non-ULID import id is matched as free text and
+// opaque id. The MailingList/query method only exposes a free-text filter (no
+// name/domainId conditions), so a non-id import id is matched as free text and
 // must resolve to exactly one mailing list.
 func (r *mailingListResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if client.IsULID(req.ID) {
+	if client.IsID(req.ID) {
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 		return
 	}

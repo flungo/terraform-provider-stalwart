@@ -28,7 +28,7 @@ func domainIDAttribute() rschema.StringAttribute {
 	return rschema.StringAttribute{
 		Optional: true,
 		Computed: true,
-		Description: "Opaque id (ULID) of the domain this object belongs to. " +
+		Description: "Opaque id of the domain this object belongs to. " +
 			"Mutually exclusive with `domain`.",
 		PlanModifiers: []planmodifier.String{
 			stringplanmodifier.RequiresReplace(),
@@ -101,10 +101,10 @@ func resolveDomainID(ctx context.Context, c *client.Client, domainID, domainName
 }
 
 // resolveByNameOrID returns an object id from a reference string. If ref is a
-// ULID it is treated as the object id directly; otherwise it is resolved to an
+// an object id it is treated as the object id directly; otherwise it is resolved to an
 // id with the supplied query filter (a name lookup).
 func resolveByNameOrID(ctx context.Context, c *client.Client, objType, ref string, filter any) (string, error) {
-	if client.IsULID(ref) {
+	if client.IsID(ref) {
 		return ref, nil
 	}
 	id, err := c.QueryOne(ctx, objType, filter)
@@ -132,16 +132,16 @@ func splitEmail(addr string) (local, domain string, ok bool) {
 }
 
 // resolveAccountByEmailOrID resolves an Account (user or group) import id. A
-// ULID is treated as the object id directly; otherwise the reference must be an
+// an object id is treated as the object id directly; otherwise the reference must be an
 // email address ("local@domain") which is resolved to an id via the domain and
 // account name filters.
 func resolveAccountByEmailOrID(ctx context.Context, c *client.Client, ref string) (string, error) {
-	if client.IsULID(ref) {
+	if client.IsID(ref) {
 		return ref, nil
 	}
 	local, domain, ok := splitEmail(ref)
 	if !ok {
-		return "", fmt.Errorf("import id %q must be a ULID or an email address (local@domain)", ref)
+		return "", fmt.Errorf("import id %q must be an object id or an email address (local@domain)", ref)
 	}
 	domainID, err := c.QueryOne(ctx, client.TypeDomain, map[string]any{"name": domain})
 	if err != nil {

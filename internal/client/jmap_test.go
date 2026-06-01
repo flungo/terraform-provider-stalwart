@@ -138,18 +138,24 @@ func TestHTTPError(t *testing.T) {
 	}
 }
 
-func TestIsULID(t *testing.T) {
+func TestIsID(t *testing.T) {
 	cases := map[string]bool{
-		"01ARZ3NDEKTSV4RRFFQ69G5FAV": true,
-		"01arz3ndektsv4rrffq69g5fav": true,
-		"example.com":                false,
-		"alice@example.com":          false,
-		"":                           false,
-		"01ARZ3NDEKTSV4RRFFQ69G5FA":  false, // too short
+		"itxnfyrwaaaa":   true,  // real server id (base32, lowercase)
+		"a":              true,  // id 0 encodes as "a"
+		"c":              true,  // short ids are valid
+		"b792013":        true,  // includes the digit subset of the alphabet
+		"example.test":   false, // domain name (contains '.')
+		"alice@dom.test": false, // email (contains '@')
+		"support role":   false, // role description (contains space)
+		"ABCDEF":         false, // uppercase is not in the alphabet
+		"id-with-dash":   false, // '-' is not in the alphabet
+		"abc456":         false, // digits 4,5,6 are not in the alphabet
+		"":               false, // empty
+		"aaaaaaaaaaaaaa": false, // 14 chars exceeds a base32 u64
 	}
 	for in, want := range cases {
-		if got := IsULID(in); got != want {
-			t.Errorf("IsULID(%q) = %v, want %v", in, got, want)
+		if got := IsID(in); got != want {
+			t.Errorf("IsID(%q) = %v, want %v", in, got, want)
 		}
 	}
 }

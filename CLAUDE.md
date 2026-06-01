@@ -61,8 +61,20 @@ against code (`stalwart-src`) and docs (`website`):
 - **DNS recommendations are not a separate method**: they are the read-only
   `dnsZoneFile` text field on the `Domain` object. `data.stalwart_dns_records`
   reads that field.
-- Objects are keyed by an **opaque server-generated ULID** (`id`). Child objects
-  reference their domain via `domainId` (the ULID), not the domain name.
+- Objects are keyed by an **opaque server-generated id** (`id`). Child objects
+  reference their domain via `domainId` (the id), not the domain name.
+  **The id is NOT a ULID** — it is a `u64` rendered in a custom base32 alphabet
+  `abcdefghijklmnopqrstuvwxyz792013` (1–13 lowercase chars; id `0` → `"a"`).
+  VERIFIED: `crates/types/src/id.rs` + `crates/utils/src/codec/base32_custom.rs`.
+  The provider's `client.IsID` matches this alphabet to distinguish an opaque id
+  from a human-friendly reference (name/email/description) in imports and domain
+  refs — those always contain a `.`, `@`, space, or uppercase letter, none of
+  which are in the alphabet.
+- **Account passwords are strength-checked with zxcvbn.** A weak password is
+  rejected at create/update with `invalidProperties: Password is too weak ...
+  (properties: [secret])`. VERIFIED: `crates/common/src/network/security.rs`
+  (`zxcvbn::zxcvbn`, `password_min_strength`). Acceptance tests use an uncommon
+  multi-word passphrase.
 - Standard JMAP `Foo/get` | `Foo/set` (create/update/destroy) | `Foo/query`
   semantics throughout. Singletons use the literal id `singleton`.
 - **Collection-valued properties are JSON objects, NOT arrays.** Sending an array

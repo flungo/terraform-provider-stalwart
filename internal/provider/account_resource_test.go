@@ -98,7 +98,7 @@ resource "stalwart_account" "test" {
   domain_id   = stalwart_domain.test.id
   name        = %[4]q
   description = %[2]q
-  password    = "s3cret-pass"
+  password    = "correct-horse-battery-staple-42"
   quota       = %[3]d
   role        = "Custom"
   role_ids    = [stalwart_role.support.id]
@@ -128,7 +128,7 @@ resource "stalwart_account" "test" {
   domain_id   = stalwart_domain.test.id
   name        = "alice"
   description = %[2]q
-  password    = "s3cret-pass"
+  password    = "correct-horse-battery-staple-42"
   quota       = %[3]d
   role        = "User"
 }

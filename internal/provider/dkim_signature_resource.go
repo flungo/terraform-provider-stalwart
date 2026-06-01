@@ -78,7 +78,7 @@ func (r *dkimSignatureResource) Schema(_ context.Context, _ resource.SchemaReque
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Opaque server-assigned identifier (ULID) of the DKIM signature.",
+				Description:   "Opaque server-assigned identifier of the DKIM signature.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"domain_id": domainIDAttribute(),
@@ -278,12 +278,12 @@ func (r *dkimSignatureResource) Delete(ctx context.Context, req resource.DeleteR
 	}
 }
 
-// ImportState imports a DKIM signature by its opaque id (ULID). DKIM signatures
+// ImportState imports a DKIM signature by its opaque id. DKIM signatures
 // have no globally-unique human-friendly name, so only id import is supported.
 func (r *dkimSignatureResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if !client.IsULID(req.ID) {
+	if !client.IsID(req.ID) {
 		resp.Diagnostics.AddError("Invalid DKIM signature import id",
-			fmt.Sprintf("%q is not a ULID. DKIM signatures must be imported by their opaque id.", req.ID))
+			fmt.Sprintf("%q is not a valid object id. DKIM signatures must be imported by their opaque id.", req.ID))
 		return
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)

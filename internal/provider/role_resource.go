@@ -56,7 +56,7 @@ func (r *roleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Opaque server-assigned identifier (ULID) of the role.",
+				Description:   "Opaque server-assigned identifier of the role.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"description": schema.StringAttribute{
@@ -205,9 +205,9 @@ func (r *roleResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	}
 }
 
-// ImportState imports a role by its description or by its opaque id (ULID).
+// ImportState imports a role by its description or by its opaque id.
 func (r *roleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if client.IsULID(req.ID) {
+	if client.IsID(req.ID) {
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 		return
 	}

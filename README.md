@@ -95,9 +95,9 @@ Exactly one of `domain_id` or `domain` must be set.
 | `stalwart_group`          | email address        | `terraform import stalwart_group.team team@example.com` |
 | `stalwart_mailing_list`   | email address        | `terraform import stalwart_mailing_list.announce announce@example.com` |
 | `stalwart_role`           | description          | `terraform import stalwart_role.support "Support team role"` |
-| `stalwart_dkim_signature` | opaque id (ULID)     | `terraform import stalwart_dkim_signature.example 01ARZ3NDEKTSV4RRFFQ69G5FAV` |
+| `stalwart_dkim_signature` | opaque id            | `terraform import stalwart_dkim_signature.example itxnfyrwaaaa` |
 
-Each of these also accepts the object's opaque id (ULID) directly.
+Each of these also accepts the object's opaque id directly.
 
 A complete example lives in [`examples/`](./examples).
 
@@ -133,9 +133,18 @@ make generate
 
 ### Acceptance tests
 
-Acceptance tests create and destroy **real** resources and therefore require a
-live Stalwart test instance. They are guarded by `TF_ACC` and read the same
-credentials as the provider:
+Acceptance tests create and destroy **real** resources against a live Stalwart
+server. By default the test harness boots a throwaway Stalwart container
+automatically (Docker required), so no instance or credentials are needed:
+
+```sh
+make testacc
+```
+
+Override the Stalwart image (e.g. to test another version) with
+`STALWART_TEST_IMAGE`. To run against an externally-managed server instead of
+the container harness, export `STALWART_ENDPOINT` (and `STALWART_TOKEN`, or
+`STALWART_USERNAME`/`STALWART_PASSWORD`):
 
 ```sh
 export STALWART_ENDPOINT=https://mail.test.example.com
@@ -143,8 +152,8 @@ export STALWART_TOKEN=...
 make testacc
 ```
 
-> **Warning:** acceptance tests will create and destroy objects on the target
-> server. Always point them at a dedicated, disposable test instance.
+> **Warning:** acceptance tests create and destroy objects on the target server.
+> When pointing at your own instance, use a dedicated, disposable one.
 
 ## Releasing
 

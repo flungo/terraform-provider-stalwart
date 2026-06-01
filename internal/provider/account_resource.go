@@ -67,7 +67,7 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Opaque server-assigned identifier (ULID) of the account.",
+				Description:   "Opaque server-assigned identifier of the account.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
@@ -104,11 +104,13 @@ func (r *accountResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Built-in role for the account: `User`, `Admin`, or `Custom`. Defaults to `User`.",
 			},
 			"role_ids": schema.SetAttribute{
-				Optional:      true,
-				Computed:      true,
-				ElementType:   types.StringType,
-				Description:   "Custom role ids assigned to the account, used when `role` is `Custom`.",
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Custom role ids assigned to the account, used when `role` is `Custom`.",
+				PlanModifiers: []planmodifier.Set{
+					useStateForUnknownUnlessTrigger(path.Root("role")),
+				},
 			},
 			"member_of": schema.SetAttribute{
 				Optional:      true,
@@ -290,7 +292,7 @@ func (r *accountResource) Delete(ctx context.Context, req resource.DeleteRequest
 }
 
 // ImportState imports an account by its email address (`local@domain`) or by its
-// opaque id (ULID).
+// opaque id.
 func (r *accountResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	id, err := resolveAccountByEmailOrID(ctx, r.client, req.ID)
 	if err != nil {

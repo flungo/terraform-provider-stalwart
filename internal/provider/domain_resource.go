@@ -69,7 +69,7 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Opaque server-assigned identifier (ULID) of the domain.",
+				Description:   "Opaque server-assigned identifier of the domain.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
@@ -313,7 +313,7 @@ func (r *domainResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 }
 
-// ImportState imports a domain by its name or by its opaque id (ULID).
+// ImportState imports a domain by its name or by its opaque id.
 func (r *domainResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	id, err := resolveByNameOrID(ctx, r.client, client.TypeDomain, req.ID,
 		map[string]any{"name": req.ID})

@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -64,7 +63,7 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Opaque server-assigned identifier (ULID) of the group.",
+				Description:   "Opaque server-assigned identifier of the group.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
@@ -94,11 +93,13 @@ func (r *groupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Description: "Built-in role for the group: `Default` or `Custom`. Defaults to `Default`.",
 			},
 			"role_ids": schema.SetAttribute{
-				Optional:      true,
-				Computed:      true,
-				ElementType:   types.StringType,
-				Description:   "Custom role ids assigned to the group, used when `role` is `Custom`.",
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Custom role ids assigned to the group, used when `role` is `Custom`.",
+				PlanModifiers: []planmodifier.Set{
+					useStateForUnknownUnlessTrigger(path.Root("role")),
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
@@ -258,7 +259,7 @@ func (r *groupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 }
 
 // ImportState imports a group by its email address (`local@domain`) or by its
-// opaque id (ULID).
+// opaque id.
 func (r *groupResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	id, err := resolveAccountByEmailOrID(ctx, r.client, req.ID)
 	if err != nil {
