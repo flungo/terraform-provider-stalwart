@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -37,22 +38,26 @@ type domainResource struct {
 }
 
 type domainResourceModel struct {
-	ID                    types.String `tfsdk:"id"`
-	Name                  types.String `tfsdk:"name"`
-	Description           types.String `tfsdk:"description"`
-	Catchall              types.String `tfsdk:"catchall"`
-	Aliases               types.Set    `tfsdk:"aliases"`
-	Enabled               types.Bool   `tfsdk:"enabled"`
-	Subaddressing         types.String `tfsdk:"subaddressing"`
-	CertificateManagement types.String `tfsdk:"certificate_management"`
-	AcmeProviderID        types.String `tfsdk:"acme_provider_id"`
-	DkimManagement        types.String `tfsdk:"dkim_management"`
-	DNSManagement         types.String `tfsdk:"dns_management"`
-	DNSServerID           types.String `tfsdk:"dns_server_id"`
-	AllowRelaying         types.Bool   `tfsdk:"allow_relaying"`
-	ReportAddress         types.String `tfsdk:"report_address"`
-	CreatedAt             types.String `tfsdk:"created_at"`
-	DNSZoneFile           types.String `tfsdk:"dns_zone_file"`
+	ID                      types.String `tfsdk:"id"`
+	Name                    types.String `tfsdk:"name"`
+	Description             types.String `tfsdk:"description"`
+	Catchall                types.String `tfsdk:"catchall"`
+	Aliases                 types.Set    `tfsdk:"aliases"`
+	Enabled                 types.Bool   `tfsdk:"enabled"`
+	Subaddressing           types.String `tfsdk:"subaddressing"`
+	DirectoryID             types.String `tfsdk:"directory_id"`
+	CertificateManagement   types.String `tfsdk:"certificate_management"`
+	AcmeProviderID          types.String `tfsdk:"acme_provider_id"`
+	SubjectAlternativeNames types.Set    `tfsdk:"subject_alternative_names"`
+	DkimManagement          types.String `tfsdk:"dkim_management"`
+	DNSManagement           types.String `tfsdk:"dns_management"`
+	DNSServerID             types.String `tfsdk:"dns_server_id"`
+	PublishRecords          types.Bool   `tfsdk:"publish_records"`
+	DNSOrigin               types.String `tfsdk:"dns_origin"`
+	AllowRelaying           types.Bool   `tfsdk:"allow_relaying"`
+	ReportAddress           types.String `tfsdk:"report_address"`
+	CreatedAt               types.String `tfsdk:"created_at"`
+	DNSZoneFile             types.String `tfsdk:"dns_zone_file"`
 }
 
 func (r *domainResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -106,6 +111,11 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Default:     stringdefault.StaticString("Enabled"),
 				Description: "Sub-addressing (plus addressing) mode: `Enabled` or `Disabled`. Defaults to `Enabled`.",
 			},
+			"directory_id": schema.StringAttribute{
+				Optional: true,
+				Description: "Opaque id of the authentication directory used to resolve accounts in this domain. " +
+					"When omitted the server uses the global directory.",
+			},
 			"certificate_management": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
@@ -115,6 +125,14 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"acme_provider_id": schema.StringAttribute{
 				Optional:    true,
 				Description: "ACME provider id used when `certificate_management` is `Automatic`.",
+			},
+			"subject_alternative_names": schema.SetAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Additional subject alternative names (SANs) to include in the TLS certificate " +
+					"when `certificate_management` is `Automatic`.",
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"dkim_management": schema.StringAttribute{
 				Optional:    true,
@@ -131,6 +149,18 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"dns_server_id": schema.StringAttribute{
 				Optional:    true,
 				Description: "DNS server id used when `dns_management` is `Automatic`.",
+			},
+			"publish_records": schema.BoolAttribute{
+				Optional:      true,
+				Computed:      true,
+				Description:   "Whether to automatically publish DNS records when `dns_management` is `Automatic`.",
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			},
+			"dns_origin": schema.StringAttribute{
+				Optional:      true,
+				Computed:      true,
+				Description:   "DNS origin (zone root) used when `dns_management` is `Automatic`.",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"allow_relaying": schema.BoolAttribute{
 				Optional:    true,
@@ -167,22 +197,37 @@ func (r *domainResource) toAPI(ctx context.Context, m *domainResourceModel, diag
 		IsEnabled:             boolPtr(m.Enabled),
 		AllowRelaying:         boolPtr(m.AllowRelaying),
 		ReportAddressURI:      strPtr(m.ReportAddress),
+		DirectoryID:           strPtr(m.DirectoryID),
 		SubAddressing:         &client.TypedRef{Type: m.Subaddressing.ValueString()},
 		DkimManagement:        &client.TypedRef{Type: m.DkimManagement.ValueString()},
-		CertificateManagement: managementRef(m.CertificateManagement.ValueString(), m.AcmeProviderID, m.DNSServerID),
-		DNSManagement:         managementRef(m.DNSManagement.ValueString(), m.AcmeProviderID, m.DNSServerID),
+		CertificateManagement: certManagementRef(ctx, m.CertificateManagement.ValueString(), m.AcmeProviderID, m.SubjectAlternativeNames, diags),
+		DNSManagement:         dnsManagementRef(m.DNSManagement.ValueString(), m.DNSServerID, m.PublishRecords, m.DNSOrigin),
 	}
 	d.Aliases = stringSetPtr(stringSetSlice(ctx, m.Aliases, diags))
 	return d
 }
 
-// managementRef builds a TypedRef for the certificate/DNS management fields,
-// attaching the relevant companion id when the mode is Automatic.
-func managementRef(kind string, acmeProviderID, dnsServerID types.String) *client.TypedRef {
+// certManagementRef builds a TypedRef for the certificate management field,
+// attaching the ACME provider id and any extra SANs when mode is Automatic.
+func certManagementRef(ctx context.Context, kind string, acmeProviderID types.String, sans types.Set, diags *fwDiags) *client.TypedRef {
 	ref := &client.TypedRef{Type: kind}
 	if kind == "Automatic" {
 		ref.AcmeProviderID = strPtr(acmeProviderID)
+		if s := stringSetSlice(ctx, sans, diags); s != nil {
+			ref.SubjectAlternativeNames = stringSetPtr(s)
+		}
+	}
+	return ref
+}
+
+// dnsManagementRef builds a TypedRef for the DNS management field, attaching
+// the DNS server id, publish flag, and origin when mode is Automatic.
+func dnsManagementRef(kind string, dnsServerID types.String, publishRecords types.Bool, origin types.String) *client.TypedRef {
+	ref := &client.TypedRef{Type: kind}
+	if kind == "Automatic" {
 		ref.DNSServerID = strPtr(dnsServerID)
+		ref.PublishRecords = boolPtr(publishRecords)
+		ref.Origin = strPtr(origin)
 	}
 	return ref
 }
@@ -196,6 +241,7 @@ func (r *domainResource) fromAPI(m *domainResourceModel, d *client.Domain, diags
 	m.Enabled = boolValue(d.IsEnabled)
 	m.AllowRelaying = boolValue(d.AllowRelaying)
 	m.ReportAddress = strValue(d.ReportAddressURI)
+	m.DirectoryID = strValue(d.DirectoryID)
 	m.CreatedAt = strValue(d.CreatedAt)
 	m.DNSZoneFile = strValue(d.DNSZoneFile)
 
@@ -208,12 +254,22 @@ func (r *domainResource) fromAPI(m *domainResourceModel, d *client.Domain, diags
 	if d.CertificateManagement != nil {
 		m.CertificateManagement = types.StringValue(d.CertificateManagement.Type)
 		m.AcmeProviderID = strValue(d.CertificateManagement.AcmeProviderID)
+		sans, d2 := stringSetValue(deref(d.CertificateManagement.SubjectAlternativeNames))
+		diags.Append(d2...)
+		m.SubjectAlternativeNames = sans
+	} else {
+		emptySet, d2 := stringSetValue(nil)
+		diags.Append(d2...)
+		m.SubjectAlternativeNames = emptySet
 	}
 	if d.DNSManagement != nil {
 		m.DNSManagement = types.StringValue(d.DNSManagement.Type)
-		if d.DNSManagement.DNSServerID != nil {
-			m.DNSServerID = strValue(d.DNSManagement.DNSServerID)
-		}
+		m.DNSServerID = strValue(d.DNSManagement.DNSServerID)
+		m.PublishRecords = boolValue(d.DNSManagement.PublishRecords)
+		m.DNSOrigin = strValue(d.DNSManagement.Origin)
+	} else {
+		m.PublishRecords = types.BoolNull()
+		m.DNSOrigin = types.StringNull()
 	}
 
 	aliases, d2 := stringSetValue(deref(d.Aliases))

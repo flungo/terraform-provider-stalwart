@@ -35,6 +35,7 @@ type domainDataSourceModel struct {
 	Catchall       types.String `tfsdk:"catchall"`
 	Enabled        types.Bool   `tfsdk:"enabled"`
 	Aliases        types.List   `tfsdk:"aliases"`
+	DirectoryID    types.String `tfsdk:"directory_id"`
 	DkimManagement types.String `tfsdk:"dkim_management"`
 	DNSManagement  types.String `tfsdk:"dns_management"`
 	CreatedAt      types.String `tfsdk:"created_at"`
@@ -90,6 +91,10 @@ func (d *domainDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Computed:    true,
 				Description: "Creation timestamp of the domain.",
 			},
+			"directory_id": schema.StringAttribute{
+				Computed:    true,
+				Description: "Opaque id of the authentication directory used for this domain (if any).",
+			},
 			"dns_zone_file": schema.StringAttribute{
 				Computed:    true,
 				Description: "Current DNS zone data the server expects to be published for the domain.",
@@ -126,6 +131,7 @@ func (d *domainDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	data.Description = strValue(dom.Description)
 	data.Catchall = strValue(dom.CatchAllAddress)
 	data.Enabled = boolValue(dom.IsEnabled)
+	data.DirectoryID = strValue(dom.DirectoryID)
 	data.CreatedAt = strValue(dom.CreatedAt)
 	data.DNSZoneFile = strValue(dom.DNSZoneFile)
 	if dom.DkimManagement != nil {
