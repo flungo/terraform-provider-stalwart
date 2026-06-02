@@ -12,6 +12,27 @@ start fast.
 - `internal/client/` — minimal JMAP client. `internal/provider/` — resources and
   data sources.
 
+## Branch workflow (Claude sessions)
+
+**Always work on a feature branch; never commit directly to `main`.**
+
+- **At the start of a session, establish the branch:**
+  - If `main` is checked out: fetch and ensure it is up to date with upstream
+    (`git fetch origin && git pull --ff-only origin main`), then create the
+    feature branch off it.
+  - If another (non-`main`) branch is already checked out: confirm with the user
+    that they want to continue working on this branch before doing anything else.
+- **After each prompt, fetch from upstream and rebase** the feature branch onto
+  the latest `main` (`git fetch origin && git rebase origin/main`). If nothing
+  changed upstream this is a no-op; if there were changes, **validate the current
+  state of the repository before proceeding**: review what changed on `main`,
+  judge whether it affects what this branch is working on, and make the required
+  adjustments.
+- **When rebasing and fixing issues, fold the fixes into the relevant existing
+  commits (amend them during the rebase) rather than appending a new "fix-up"
+  commit.** The linear history must read as though those changes were always
+  present — never as a commit that retrospectively patches for an external change.
+
 ## Source verification
 
 Every non-obvious claim below has been fact-checked against the two upstream
