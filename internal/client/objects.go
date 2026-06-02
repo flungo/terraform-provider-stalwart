@@ -18,11 +18,15 @@ package client
 // Object type names. The wire method names are derived from these with the
 // "x:" prefix (see MethodPrefix), e.g. "x:Domain/get".
 const (
-	TypeDomain        = "Domain"
-	TypeAccount       = "Account"
-	TypeDkimSignature = "DkimSignature"
-	TypeMailingList   = "MailingList"
-	TypeRole          = "Role"
+	TypeDomain          = "Domain"
+	TypeAccount         = "Account"
+	TypeDkimSignature   = "DkimSignature"
+	TypeMailingList     = "MailingList"
+	TypeRole            = "Role"
+	TypeDnsServer       = "DnsServer"
+	TypeAcmeProvider    = "AcmeProvider"
+	TypeDirectory       = "Directory"
+	TypeNetworkListener = "NetworkListener"
 )
 
 // Account @type discriminator values.
@@ -35,9 +39,12 @@ const (
 // discriminator and a small set of companion fields used by this provider are
 // represented; other companion fields are ignored on read.
 type TypedRef struct {
-	Type           string  `json:"@type"`
-	AcmeProviderID *string `json:"acmeProviderId,omitempty"`
-	DNSServerID    *string `json:"dnsServerId,omitempty"`
+	Type                    string     `json:"@type"`
+	AcmeProviderID          *string    `json:"acmeProviderId,omitempty"`
+	DNSServerID             *string    `json:"dnsServerId,omitempty"`
+	PublishRecords          *bool      `json:"publishRecords,omitempty"`
+	Origin                  *string    `json:"origin,omitempty"`
+	SubjectAlternativeNames *StringSet `json:"subjectAlternativeNames,omitempty"`
 }
 
 // Domain models the Stalwart Domain object.
@@ -54,6 +61,7 @@ type Domain struct {
 	CertificateManagement *TypedRef  `json:"certificateManagement,omitempty"`
 	DkimManagement        *TypedRef  `json:"dkimManagement,omitempty"`
 	DNSManagement         *TypedRef  `json:"dnsManagement,omitempty"`
+	DirectoryID           *string    `json:"directoryId,omitempty"`
 
 	// Server-set, read-only.
 	CreatedAt   *string `json:"createdAt,omitempty"`
@@ -153,4 +161,91 @@ type Role struct {
 	RoleIDs             *StringSet `json:"roleIds,omitempty"`
 	EnabledPermissions  *StringSet `json:"enabledPermissions,omitempty"`
 	DisabledPermissions *StringSet `json:"disabledPermissions,omitempty"`
+}
+
+// SecretKey models a write-only secret value (DNS provider tokens, LDAP bind
+// credentials, etc.). Only the inline "Value" variant is surfaced.
+type SecretKey struct {
+	Type   string  `json:"@type"`
+	Secret *string `json:"secret,omitempty"`
+}
+
+// DnsServer models the Stalwart DnsServer object. The Type field is the
+// "@type" discriminator that selects the provider (e.g. "Cloudflare", "Tsig").
+// Duration fields (Timeout, TTL, etc.) are stored as milliseconds on the wire.
+// Secret is used by cloud providers; Key, Host, Port, KeyName, Protocol, and
+// TsigAlgorithm are used by the Tsig variant.
+type DnsServer struct {
+	ID                 *string    `json:"id,omitempty"`
+	Type               *string    `json:"@type,omitempty"`
+	Description        *string    `json:"description,omitempty"`
+	Secret             *SecretKey `json:"secret,omitempty"`
+	Timeout            *int64     `json:"timeout,omitempty"`
+	TTL                *int64     `json:"ttl,omitempty"`
+	PollingInterval    *int64     `json:"pollingInterval,omitempty"`
+	PropagationTimeout *int64     `json:"propagationTimeout,omitempty"`
+	PropagationDelay   *int64     `json:"propagationDelay,omitempty"`
+
+	// Tsig variant fields.
+	Host          *string    `json:"host,omitempty"`
+	Port          *int64     `json:"port,omitempty"`
+	KeyName       *string    `json:"keyName,omitempty"`
+	Key           *SecretKey `json:"key,omitempty"`
+	Protocol      *string    `json:"protocol,omitempty"`
+	TsigAlgorithm *string    `json:"tsigAlgorithm,omitempty"`
+}
+
+// AcmeProvider models the Stalwart AcmeProvider object. ChallengeType selects
+// the ACME challenge method; RenewBefore is a fraction-of-lifetime enum.
+// AccountKey and AccountUri are server-set after ACME registration.
+type AcmeProvider struct {
+	ID            *string    `json:"id,omitempty"`
+	ChallengeType *string    `json:"challengeType,omitempty"`
+	Contact       *StringSet `json:"contact,omitempty"`
+	Directory     *string    `json:"directory,omitempty"`
+	RenewBefore   *string    `json:"renewBefore,omitempty"`
+	MaxRetries    *int64     `json:"maxRetries,omitempty"`
+
+	// Server-set after ACME account registration.
+	AccountKey *string `json:"accountKey,omitempty"`
+	AccountUri *string `json:"accountUri,omitempty"`
+}
+
+// Directory models a Stalwart authentication directory (the "Directory" JMAP
+// object). The Type field is the "@type" discriminator: "Ldap" or "Oidc".
+// LDAP-specific and OIDC-specific fields coexist in the same struct; unused
+// fields are omitted from the wire via omitempty.
+type Directory struct {
+	ID          *string `json:"id,omitempty"`
+	Type        *string `json:"@type,omitempty"`
+	Description *string `json:"description,omitempty"`
+
+	// LDAP variant fields.
+	URL             *string    `json:"url,omitempty"`
+	BaseDN          *string    `json:"baseDn,omitempty"`
+	BindDN          *string    `json:"bindDn,omitempty"`
+	BindSecret      *SecretKey `json:"bindSecret,omitempty"`
+	FilterLogin     *string    `json:"filterLogin,omitempty"`
+	FilterMailbox   *string    `json:"filterMailbox,omitempty"`
+	AttrEmail       *StringSet `json:"attrEmail,omitempty"`
+	AttrMemberOf    *StringSet `json:"attrMemberOf,omitempty"`
+	AttrSecret      *StringSet `json:"attrSecret,omitempty"`
+	AttrDescription *StringSet `json:"attrDescription,omitempty"`
+
+	// OIDC variant fields.
+	IssuerURL     *string    `json:"issuerUrl,omitempty"`
+	ClaimUsername *string    `json:"claimUsername,omitempty"`
+	RequireScopes *StringSet `json:"requireScopes,omitempty"`
+}
+
+// NetworkListener models a Stalwart network listener (the "NetworkListener"
+// JMAP object). Protocol uses lowercase values: smtp, lmtp, http, imap, pop3,
+// manageSieve. Bind is a set of "host:port" strings.
+type NetworkListener struct {
+	ID                           *string    `json:"id,omitempty"`
+	Name                         *string    `json:"name,omitempty"`
+	Bind                         *StringSet `json:"bind,omitempty"`
+	Protocol                     *string    `json:"protocol,omitempty"`
+	TLSImplicit                  *bool      `json:"tlsImplicit,omitempty"`
+	OverrideProxyTrustedNetworks *StringSet `json:"overrideProxyTrustedNetworks,omitempty"`
 }

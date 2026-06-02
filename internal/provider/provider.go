@@ -152,6 +152,10 @@ func (p *StalwartProvider) Resources(_ context.Context) []func() resource.Resour
 		NewGroupResource,
 		NewMailingListResource,
 		NewRoleResource,
+		NewDnsServerResource,
+		NewAcmeProviderResource,
+		NewDirectoryResource,
+		NewNetworkListenerResource,
 	}
 }
 

@@ -109,6 +109,66 @@ func checkServerDkim(c *client.Client, resourceName string, assert func(client.D
 	}
 }
 
+// checkServerDnsServer fetches the DNS server by its state id.
+func checkServerDnsServer(c *client.Client, resourceName string, assert func(client.DnsServer) error) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, resourceName)
+		if err != nil {
+			return err
+		}
+		var srv client.DnsServer
+		if err := c.GetOne(accCtx(), client.TypeDnsServer, id, &srv); err != nil {
+			return fmt.Errorf("reading DNS server %s from server: %w", id, err)
+		}
+		return assert(srv)
+	}
+}
+
+// checkServerAcmeProvider fetches the ACME provider by its state id.
+func checkServerAcmeProvider(c *client.Client, resourceName string, assert func(client.AcmeProvider) error) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, resourceName)
+		if err != nil {
+			return err
+		}
+		var p client.AcmeProvider
+		if err := c.GetOne(accCtx(), client.TypeAcmeProvider, id, &p); err != nil {
+			return fmt.Errorf("reading ACME provider %s from server: %w", id, err)
+		}
+		return assert(p)
+	}
+}
+
+// checkServerDirectory fetches the directory by its state id.
+func checkServerDirectory(c *client.Client, resourceName string, assert func(client.Directory) error) resource.TestCheckFunc { //nolint:unparam
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, resourceName)
+		if err != nil {
+			return err
+		}
+		var d client.Directory
+		if err := c.GetOne(accCtx(), client.TypeDirectory, id, &d); err != nil {
+			return fmt.Errorf("reading directory %s from server: %w", id, err)
+		}
+		return assert(d)
+	}
+}
+
+// checkServerNetworkListener fetches the network listener by its state id.
+func checkServerNetworkListener(c *client.Client, resourceName string, assert func(client.NetworkListener) error) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, resourceName)
+		if err != nil {
+			return err
+		}
+		var l client.NetworkListener
+		if err := c.GetOne(accCtx(), client.TypeNetworkListener, id, &l); err != nil {
+			return fmt.Errorf("reading network listener %s from server: %w", id, err)
+		}
+		return assert(l)
+	}
+}
+
 // --- small assertion helpers used inside the assert callbacks ----------------
 
 // firstErr returns the first non-nil error from errs, or nil. It lets an assert
