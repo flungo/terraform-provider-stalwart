@@ -155,6 +155,40 @@ against code (`stalwart-src`) and docs (`website`):
   `500ms`; units d/h/m/s/ms, empty = ms — matching the server's `FromStr`) and
   converts to/from milliseconds (`parseDuration`/`formatDuration`). Applies to
   dkim `expiry` (`expire`).
+- **`IpProtocol` wire values are lowercase**: `"udp"`, `"tcp"`. VERIFIED:
+  `crates/registry/src/schema/enums_impl.rs` (`IpProtocol::Udp => "udp"`).
+  Sending `"Udp"` is rejected (`invalidPatch: Invalid value Str("Udp") for enum
+  type Udp`). Used by `DnsServerTsig.protocol`.
+- **`TsigAlgorithm` wire values are kebab-case**: `"hmac-md5"`, `"hmac-sha1"`,
+  `"hmac-sha256"`, `"hmac-sha256-128"`, `"hmac-sha384"`, `"hmac-sha384-192"`,
+  `"hmac-sha512"`, `"hmac-sha512-256"`, `"gss"`. VERIFIED:
+  `crates/registry/src/schema/enums_impl.rs`. Sending `"HmacSha256"` is
+  rejected.
+- **`AcmeProvider.directory` is read-only after creation.** The server rejects
+  any update that includes `directory` in the patch body, even if the value is
+  unchanged (`invalidPatch: Cannot modify read-only property`). The provider
+  marks `directory` as `RequiresReplace` and omits it from the update body.
+- **`LdapDirectory` correct field names** (VERIFIED `structs.rs`):
+  `attrEmail`, `attrMemberOf`, `attrSecret`, `attrDescription`. There is NO
+  `attrName`, NO `attrQuota`, NO `attrGroups`. Sending non-existent fields is
+  rejected with `invalidPatch: Invalid key for object property`.
+- **`description` is required non-empty** on `LdapDirectory` and `OidcDirectory`.
+  The server validates this on create/update.
+- **`OidcDirectory` fields**: `issuerUrl`, `claimUsername`, `requireScopes`.
+- **Optional+Computed+UseStateForUnknown for server-preserved fields.** When the
+  server always returns a value for a field (non-`Option<T>` in the Rust struct),
+  that field must be `Optional + Computed + UseStateForUnknown` in the Terraform
+  schema. If only `Optional`, removing the field from config plans null, but after
+  apply the server returns its preserved/default value → "Provider produced
+  inconsistent result". Applies to: `DnsServer` duration fields, `AcmeProvider`
+  `renew_before` and `max_retries`. The `UseStateForUnknown` modifier propagates
+  the prior-state value into the plan when config is null (and the attribute is
+  Computed), avoiding the inconsistency.
+- **LE staging ACME contact email domains**: `.test` is not in the IANA Public
+  Suffix List (rejected: "Domain name does not end with a valid public suffix").
+  `example.com` is in Boulder's forbidden-domain list (rejected: "contact email
+  has forbidden domain"). Use a made-up domain with a real, unbanned TLD (e.g.
+  `stalwart-tf-acc.net`) for acceptance test contact emails.
 
 ### Reference docs
 
