@@ -38,9 +38,9 @@ When extending the provider, verify facts against the upstream source — do NOT
 
 ```sh
 git clone --depth 1 https://github.com/stalwartlabs/stalwart.git /tmp/stalwart-src
-git clone --depth 1 https://github.com/stalwartlabs/website.git    /tmp/website
+git clone --depth 1 https://github.com/stalwartlabs/website.git    /tmp/stalwart-website
 # Object schemas:
-ls /tmp/website/src/content/docs/docs/ref/object/
+ls /tmp/stalwart-website/src/content/docs/docs/ref/object/
 ```
 
 Key paths in `stalwart-src`:

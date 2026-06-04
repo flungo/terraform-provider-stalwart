@@ -10,9 +10,9 @@ Clone these when extending the provider — do not rely on the generated `ref/ob
 
 ```sh
 git clone --depth 1 https://github.com/stalwartlabs/stalwart.git /tmp/stalwart-src
-git clone --depth 1 https://github.com/stalwartlabs/website.git    /tmp/website
+git clone --depth 1 https://github.com/stalwartlabs/website.git    /tmp/stalwart-website
 # Object schemas:
-ls /tmp/website/src/content/docs/docs/ref/object/
+ls /tmp/stalwart-website/src/content/docs/docs/ref/object/
 ```
 
 The official docs site (`stalw.art/docs`) blocks automated fetches (HTTP 403). The GitHub raw API rate-limits unauthenticated requests — prefer a shallow `git clone`.
