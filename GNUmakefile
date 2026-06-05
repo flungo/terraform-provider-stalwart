@@ -58,7 +58,7 @@ cover-html: ## Render coverage.out as an HTML report at coverage.html.
 
 .PHONY: generate
 generate: ## Generate documentation and other code-generated artifacts.
-	cd tools && go generate ./...
+	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name stalwart
 
 .PHONY: lint
 lint: ## Run gofmt, go vet, and golangci-lint.
