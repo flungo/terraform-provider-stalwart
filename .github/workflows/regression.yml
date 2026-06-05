@@ -1,0 +1,48 @@
+# Copyright (c) Fabrizio Lungo
+# SPDX-License-Identifier: MPL-2.0
+#
+# After every merge to main, dispatch a provider-regression event to the
+# stalwart.flungo.net config repository. The actual test runs there, in a
+# private context, so CI logs never expose config-repo contents.
+#
+# Requires the REGRESSION_DISPATCH_TOKEN repository secret: a fine-grained
+# PAT (or classic PAT with `repo` scope) that has Actions write permission on
+# flungo/stalwart.flungo.net.
+#
+# See docs/decisions/002-ci-over-local.md for the accepted-tests CI context,
+# and stalwart.flungo.net/docs/decisions/008-provider-regression-cross-repo-dispatch.md
+# for the full rationale and the follow-up plan for pre-merge status checks.
+name: Regression (stalwart.flungo.net)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Dispatch regression to stalwart.flungo.net
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send provider-regression dispatch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.REGRESSION_DISPATCH_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'flungo',
+              repo: 'stalwart.flungo.net',
+              event_type: 'provider-regression',
+              client_payload: {
+                sha: context.sha,
+                ref_name: context.ref.replace('refs/heads/', ''),
+                triggering_run: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              },
+            });
+            core.notice(
+              `Dispatched provider-regression to flungo/stalwart.flungo.net ` +
+              `for ${context.ref.replace('refs/heads/', '')}@${context.sha.slice(0, 7)}`
+            );
