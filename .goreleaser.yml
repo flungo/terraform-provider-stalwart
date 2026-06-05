@@ -58,6 +58,8 @@ signs:
 release:
   # Drafts let the maintainer review the release before publishing.
   draft: false
+  # Automatically mark releases with semver pre-release suffixes (e.g. -alpha, -rc) as pre-releases.
+  prerelease: auto
 
 changelog:
   disable: true
