@@ -1,0 +1,5 @@
+# Import by email address (preferred):
+terraform import stalwart_account.alice alice@example.com
+
+# Import by opaque server-assigned id:
+# terraform import stalwart_account.alice <opaque-id>

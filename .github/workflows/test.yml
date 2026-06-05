@@ -53,6 +53,26 @@ jobs:
           cache: true
       - run: go test ./... -timeout=120s
 
+  # Verifies that committed Registry docs are in sync with the provider schema.
+  # The docs workflow auto-commits generated docs on every push to non-main
+  # branches; this job catches any drift introduced directly on main (e.g. via
+  # a rebase that included schema changes without re-running make generate).
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Check documentation is up to date
+        run: |
+          make generate
+          git diff --exit-code docs/
+
   # Acceptance tests boot a throwaway Stalwart container via the in-process
   # harness (internal/acctest). GitHub-hosted runners ship with Docker and can
   # pull public images, so no services: block or extra setup is required.

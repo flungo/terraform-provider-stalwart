@@ -1,0 +1,51 @@
+# Copyright (c) Fabrizio Lungo
+# SPDX-License-Identifier: MPL-2.0
+#
+# Generates Terraform Registry documentation after every push to a non-main
+# branch and commits the result back to the branch. This means contributors
+# never need a local Terraform binary; the CI job handles generation.
+#
+# On main, docs must already be committed (the validate job in test.yml
+# enforces this, and the workflow below is skipped on main).
+name: docs
+
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Generate documentation
+        run: make generate
+
+      - name: Commit generated documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          if git diff --staged --quiet; then
+            echo "Documentation is already up to date."
+          else
+            git commit -m "docs: regenerate provider documentation"
+            git push
+          fi
