@@ -4,6 +4,8 @@
 # Builds and publishes the provider to the Terraform Registry when a semver tag
 # is pushed. Requires the repository secrets GPG_PRIVATE_KEY and PASSPHRASE,
 # matching the GPG key registered with the Terraform Registry.
+# When those secrets are absent the release is built and published unsigned
+# (suitable for early testing; not accepted by the Terraform Registry).
 name: release
 
 on:
@@ -35,7 +37,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ github.event.inputs.version }}" -m "Release ${{ github.event.inputs.version }}"
-          git push origin "${{ github.event.inputs.version }}"
+          git push origin "${{ github.event.inputs.version }}" || echo "Tag already exists, skipping"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -44,6 +46,7 @@ jobs:
           cache: true
 
       - name: Import GPG key
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
         uses: crazy-max/ghaction-import-gpg@v6
         id: import_gpg
         with:
@@ -54,7 +57,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean
+          args: release --clean${{ secrets.GPG_PRIVATE_KEY == '' && ' --skip=sign' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
