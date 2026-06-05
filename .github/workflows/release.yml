@@ -44,6 +44,10 @@ jobs:
             git push origin "$VERSION"
           fi
 
+      - name: Checkout tag
+        if: github.event_name == 'workflow_dispatch'
+        run: git checkout "${{ github.event.inputs.version }}"
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
