@@ -45,8 +45,19 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Check GPG availability
+        id: gpg
+        env:
+          GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -n "$GPG_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Import GPG key
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        if: steps.gpg.outputs.available == 'true'
         uses: crazy-max/ghaction-import-gpg@v6
         id: import_gpg
         with:
@@ -57,7 +68,9 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean${{ secrets.GPG_PRIVATE_KEY == '' && ' --skip=sign' || '' }}
+          args: >-
+            release --clean
+            ${{ steps.gpg.outputs.available != 'true' && '--skip=sign' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
