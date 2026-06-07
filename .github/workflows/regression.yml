@@ -6,8 +6,8 @@
 # private context, so CI logs never expose config-repo contents.
 #
 # Requires the REGRESSION_DISPATCH_TOKEN repository secret: a fine-grained
-# PAT (or classic PAT with `repo` scope) that has Actions write permission on
-# flungo/stalwart.flungo.net.
+# PAT (or classic PAT with `repo` scope) that has Contents: write permission
+# on flungo/stalwart.flungo.net.
 #
 # See docs/decisions/002-ci-over-local.md for the accepted-tests CI context,
 # and stalwart.flungo.net/docs/decisions/008-provider-regression-cross-repo-dispatch.md
