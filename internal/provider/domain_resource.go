@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -52,7 +51,7 @@ type domainResourceModel struct {
 	DkimManagement          types.String `tfsdk:"dkim_management"`
 	DNSManagement           types.String `tfsdk:"dns_management"`
 	DNSServerID             types.String `tfsdk:"dns_server_id"`
-	PublishRecords          types.Bool   `tfsdk:"publish_records"`
+	PublishRecords          types.Set    `tfsdk:"publish_records"`
 	DNSOrigin               types.String `tfsdk:"dns_origin"`
 	AllowRelaying           types.Bool   `tfsdk:"allow_relaying"`
 	ReportAddress           types.String `tfsdk:"report_address"`
@@ -150,11 +149,15 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Optional:    true,
 				Description: "DNS server id used when `dns_management` is `Automatic`.",
 			},
-			"publish_records": schema.BoolAttribute{
-				Optional:      true,
-				Computed:      true,
-				Description:   "Whether to automatically publish DNS records when `dns_management` is `Automatic`.",
-				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			"publish_records": schema.SetAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Set of DNS record types the server should automatically publish when " +
+					"`dns_management` is `Automatic`. Valid values: `dkim`, `tlsa`, `spf`, `mx`, " +
+					"`dmarc`, `srv`, `mtaSts`, `tlsRpt`, `caa`, `autoConfig`, `autoConfigLegacy`, " +
+					"`autoDiscover`.",
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"dns_origin": schema.StringAttribute{
 				Optional:      true,
@@ -201,7 +204,7 @@ func (r *domainResource) toAPI(ctx context.Context, m *domainResourceModel, diag
 		SubAddressing:         &client.TypedRef{Type: m.Subaddressing.ValueString()},
 		DkimManagement:        &client.TypedRef{Type: m.DkimManagement.ValueString()},
 		CertificateManagement: certManagementRef(ctx, m.CertificateManagement.ValueString(), m.AcmeProviderID, m.SubjectAlternativeNames, diags),
-		DNSManagement:         dnsManagementRef(m.DNSManagement.ValueString(), m.DNSServerID, m.PublishRecords, m.DNSOrigin),
+		DNSManagement:         dnsManagementRef(ctx, m.DNSManagement.ValueString(), m.DNSServerID, m.PublishRecords, m.DNSOrigin, diags),
 	}
 	d.Aliases = stringSetPtr(stringSetSlice(ctx, m.Aliases, diags))
 	return d
@@ -221,13 +224,16 @@ func certManagementRef(ctx context.Context, kind string, acmeProviderID types.St
 }
 
 // dnsManagementRef builds a TypedRef for the DNS management field, attaching
-// the DNS server id, publish flag, and origin when mode is Automatic.
-func dnsManagementRef(kind string, dnsServerID types.String, publishRecords types.Bool, origin types.String) *client.TypedRef {
+// the DNS server id, the set of record types to publish, and the origin when
+// mode is Automatic.
+func dnsManagementRef(ctx context.Context, kind string, dnsServerID types.String, publishRecords types.Set, origin types.String, diags *fwDiags) *client.TypedRef {
 	ref := &client.TypedRef{Type: kind}
 	if kind == "Automatic" {
 		ref.DNSServerID = strPtr(dnsServerID)
-		ref.PublishRecords = boolPtr(publishRecords)
 		ref.Origin = strPtr(origin)
+		if s := stringSetSlice(ctx, publishRecords, diags); s != nil {
+			ref.PublishRecords = stringSetPtr(s)
+		}
 	}
 	return ref
 }
@@ -265,10 +271,14 @@ func (r *domainResource) fromAPI(m *domainResourceModel, d *client.Domain, diags
 	if d.DNSManagement != nil {
 		m.DNSManagement = types.StringValue(d.DNSManagement.Type)
 		m.DNSServerID = strValue(d.DNSManagement.DNSServerID)
-		m.PublishRecords = boolValue(d.DNSManagement.PublishRecords)
+		records, d2 := stringSetValue(deref(d.DNSManagement.PublishRecords))
+		diags.Append(d2...)
+		m.PublishRecords = records
 		m.DNSOrigin = strValue(d.DNSManagement.Origin)
 	} else {
-		m.PublishRecords = types.BoolNull()
+		emptySet, d2 := stringSetValue(nil)
+		diags.Append(d2...)
+		m.PublishRecords = emptySet
 		m.DNSOrigin = types.StringNull()
 	}
 
