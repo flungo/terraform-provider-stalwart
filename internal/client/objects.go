@@ -38,11 +38,15 @@ const (
 // TypedRef is a minimally-modeled tagged union value. Only the "@type"
 // discriminator and a small set of companion fields used by this provider are
 // represented; other companion fields are ignored on read.
+//
+// PublishRecords is the dnsManagement.Automatic variant's set of DNS record
+// types to publish. Stalwart models it as Map<DnsRecordType>, encoded on the
+// wire as the same {"<value>": true} object form as StringSet — not a bool.
 type TypedRef struct {
 	Type                    string     `json:"@type"`
 	AcmeProviderID          *string    `json:"acmeProviderId,omitempty"`
 	DNSServerID             *string    `json:"dnsServerId,omitempty"`
-	PublishRecords          *bool      `json:"publishRecords,omitempty"`
+	PublishRecords          *StringSet `json:"publishRecords,omitempty"`
 	Origin                  *string    `json:"origin,omitempty"`
 	SubjectAlternativeNames *StringSet `json:"subjectAlternativeNames,omitempty"`
 }

@@ -127,6 +127,88 @@ func TestAccDomainResourceMinimal(t *testing.T) {
 	})
 }
 
+// TestAccDomainResourceAutomaticDNS exercises a domain with Automatic DNS
+// management and a populated publish_records set. This is the regression
+// scenario that previously broke read/import/plan/apply: Stalwart returns
+// publishRecords as a Map<DnsRecordType> object ({"dkim":true,...}), which the
+// provider once modeled as a bool. Create + read + import are all covered so
+// the round-trip through the publishRecords set is verified end to end, both in
+// Terraform state and via an independent server read.
+func TestAccDomainResourceAutomaticDNS(t *testing.T) {
+	c := accClient(t)
+	const name = "tf-acc-domain-autodns.test"
+	const resourceName = "stalwart_domain.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDomainConfigAutoDNS(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "name", name),
+					resource.TestCheckResourceAttr(resourceName, "dns_management", "Automatic"),
+					resource.TestCheckResourceAttrPair(resourceName, "dns_server_id", "stalwart_dns_server.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "publish_records.#", "4"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "publish_records.*", "dkim"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "publish_records.*", "spf"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "publish_records.*", "mx"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "publish_records.*", "dmarc"),
+					// Independent server-side verification of the union and its set.
+					checkServerDomain(c, resourceName, func(d client.Domain) error {
+						return firstErr(
+							wantVariant("dnsManagement", d.DNSManagement, "Automatic"),
+							wantPublishRecords(d.DNSManagement, "dkim", "spf", "mx", "dmarc"),
+						)
+					}),
+				),
+			},
+			// Import and verify the publish_records set round-trips from a real
+			// Domain/get response (the path that originally failed to unmarshal).
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateId:           name,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"dns_zone_file"},
+			},
+		},
+	})
+}
+
+// wantPublishRecords asserts the dnsManagement union is Automatic and its
+// publishRecords set contains exactly want.
+func wantPublishRecords(ref *client.TypedRef, want ...string) error {
+	if ref == nil {
+		return fmt.Errorf("dnsManagement: got nil, want Automatic with publishRecords")
+	}
+	return wantSetPtr("dnsManagement.publishRecords", ref.PublishRecords, want...)
+}
+
+func testAccDomainConfigAutoDNS(name string) string {
+	// A local Tsig DNS server validates only the key format and makes no
+	// outbound calls, so it is safe to reference from an Automatic-DNS domain in
+	// the sandboxed test environment.
+	return fmt.Sprintf(`
+resource "stalwart_dns_server" "test" {
+  type           = "Tsig"
+  description    = "tf-acc-autodns"
+  host           = "127.0.0.1"
+  key_name       = "test.key."
+  key            = "dGYtYWNjLXRzaWctdGVzdC1rZXktMzItYnl0ZXMhIQ=="
+  protocol       = "udp"
+  tsig_algorithm = "hmac-sha256"
+}
+
+resource "stalwart_domain" "test" {
+  name            = %[1]q
+  dns_management  = "Automatic"
+  dns_server_id   = stalwart_dns_server.test.id
+  publish_records = ["dkim", "spf", "mx", "dmarc"]
+}
+`, name)
+}
+
 func testAccDomainConfigFull(name string) string {
 	return fmt.Sprintf(`
 resource "stalwart_domain" "test" {
