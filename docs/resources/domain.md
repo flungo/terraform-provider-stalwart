@@ -45,7 +45,7 @@ resource "stalwart_domain" "example" {
 - `dns_origin` (String) DNS origin (zone root) used when `dns_management` is `Automatic`.
 - `dns_server_id` (String) DNS server id used when `dns_management` is `Automatic`.
 - `enabled` (Boolean) Whether this domain is enabled. Defaults to `true`.
-- `publish_records` (Boolean) Whether to automatically publish DNS records when `dns_management` is `Automatic`.
+- `publish_records` (Set of String) Set of DNS record types the server should automatically publish when `dns_management` is `Automatic`. Valid values: `dkim`, `tlsa`, `spf`, `mx`, `dmarc`, `srv`, `mtaSts`, `tlsRpt`, `caa`, `autoConfig`, `autoConfigLegacy`, `autoDiscover`.
 - `report_address` (String) Address to receive DMARC, TLS-RPT and CAA reports for this domain (maps to `reportAddressUri`). Defaults to `mailto:postmaster`.
 - `subaddressing` (String) Sub-addressing (plus addressing) mode: `Enabled` or `Disabled`. Defaults to `Enabled`.
 - `subject_alternative_names` (Set of String) Additional subject alternative names (SANs) to include in the TLS certificate when `certificate_management` is `Automatic`.
