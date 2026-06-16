@@ -144,6 +144,24 @@ the public key is not registered on the Registry. Check:
 The workflow skips tag creation and builds from the existing tag. This is safe — use
 it to re-run a release if the workflow failed partway through.
 
+### GoReleaser releases to the wrong tag (422 asset-already-exists errors)
+
+This happens when a pre-release tag (e.g. `v0.1.0-alpha.3`) and the new stable
+tag (e.g. `v0.1.0`) both point to the same commit. GoReleaser uses `git describe`
+to detect the current version and can pick the pre-release tag instead of the
+intended one, then tries to upload assets to the existing pre-release GitHub
+release — which already has them — and fails with HTTP 422.
+
+The release workflow passes `GORELEASER_CURRENT_TAG` to prevent this, but if you
+encounter it (e.g. after pushing a tag manually on a commit that already has a
+pre-release tag):
+1. Delete the incorrectly-targeted GitHub release (do **not** delete the tag itself)
+2. Re-run the release workflow — `GORELEASER_CURRENT_TAG` will ensure GoReleaser
+   creates a fresh release at the correct tag
+
+To avoid it entirely, cut stable releases from a fresh commit rather than tagging
+a commit that already carries a pre-release tag.
+
 ### Pre-release versions not visible as "latest" on the Registry
 
 GoReleaser marks versions with a pre-release suffix (e.g. `-alpha.1`) as GitHub
