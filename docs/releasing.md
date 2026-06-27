@@ -7,8 +7,8 @@ how to cut a release, and how to verify it landed correctly.
 
 ### GPG signing key
 
-The Terraform Registry requires every provider release to include a GPG signature
-over the `SHA256SUMS` file. The release workflow reads two repository secrets:
+Both registries require every provider release to include a GPG signature over
+the `SHA256SUMS` file. The release workflow reads two repository secrets:
 
 | Secret | How to obtain |
 |---|---|
@@ -17,15 +17,29 @@ over the `SHA256SUMS` file. The release workflow reads two repository secrets:
 
 The corresponding **public key** must be registered at
 [registry.terraform.io](https://registry.terraform.io) under your account →
-**GPG Keys**. Without it the Registry accepts the release files but cannot
-verify the signature and will reject ingestion.
+**GPG Keys**. Without it the Terraform Registry accepts the release files but
+cannot verify the signature and will reject ingestion.
+
+The same GPG public key is stored in the OpenTofu registry's provider metadata
+at `providers/f/flungo/stalwart.json` in
+[opentofu/registry](https://github.com/opentofu/registry). This was submitted
+once as part of the initial provider registration PR and does not need to change
+unless the signing key is rotated (see [Key rotation](#key-rotation) below).
 
 ### Terraform Registry connection
 
-The Registry is connected to this repo via a **GitHub App** (visible under
-`github.com/flungo/terraform-provider-stalwart` → Settings → GitHub Apps).
-This app fires on every new GitHub release and triggers automatic ingestion —
-no manual sync needed after the first connection was established.
+The Terraform Registry is connected to this repo via a **GitHub App** (visible
+under `github.com/flungo/terraform-provider-stalwart` → Settings → GitHub
+Apps). This app fires on every new GitHub release and triggers automatic
+ingestion — no manual sync needed after the first connection was established.
+
+### OpenTofu Registry registration
+
+The provider is registered at
+[search.opentofu.org/provider/flungo/stalwart](https://search.opentofu.org/provider/flungo/stalwart)
+via a one-time PR to [opentofu/registry](https://github.com/opentofu/registry)
+(PR [#4489](https://github.com/opentofu/registry/pull/4489), now merged). No
+further one-time setup is required.
 
 ---
 
@@ -87,6 +101,8 @@ and publishes the GitHub release with signed binaries.
    - Signs `SHA256SUMS` with the GPG key → `SHA256SUMS.sig`
    - Creates a GitHub release and uploads all artifacts
 4. The Terraform Registry GitHub App detects the new release and ingests it
+5. The OpenTofu Registry automatically picks up the new release within ~15 minutes
+   (a scheduled workflow in opentofu/registry polls GitHub releases on that cadence)
 
 ---
 
@@ -94,11 +110,16 @@ and publishes the GitHub release with signed binaries.
 
 1. **GitHub release**: check `github.com/flungo/terraform-provider-stalwart/releases` —
    should show the new version with all platform zips, `SHA256SUMS`, and `SHA256SUMS.sig`.
-2. **Registry ingestion**: check `registry.terraform.io/providers/flungo/stalwart` —
+2. **Terraform Registry ingestion**: check `registry.terraform.io/providers/flungo/stalwart` —
    the new version should appear within a few minutes. If it doesn't:
    - Verify the `.sig` file is present in the GitHub release assets
    - Go to the Registry provider page and use **Resync** to manually trigger ingestion
-3. **Regression test**: the release workflow does not run the regression test. After a
+3. **OpenTofu Registry ingestion**: check
+   `search.opentofu.org/provider/flungo/stalwart` — the new version should
+   appear within ~15 minutes (the registry polls on a 15-minute cron). No manual
+   action is required; if it hasn't appeared after 30 minutes, verify the
+   `SHA256SUMS.sig` file is present in the GitHub release assets.
+4. **Regression test**: the release workflow does not run the regression test. After a
    stable release, optionally trigger `provider-regression.yml` in `flungo/stalwart.flungo.net`
    via `workflow_dispatch` to confirm the config still applies cleanly against the released binary.
 
@@ -167,3 +188,35 @@ a commit that already carries a pre-release tag.
 GoReleaser marks versions with a pre-release suffix (e.g. `-alpha.1`) as GitHub
 pre-releases. The Registry reflects this — pre-release versions are listed but
 not shown as the current stable version.
+
+### New version not appearing on the OpenTofu Registry after 30 minutes
+
+The OpenTofu Registry polls GitHub releases every 15 minutes. If a version is
+still absent after 30 minutes:
+
+1. Confirm the GitHub release is not a draft and the `SHA256SUMS.sig` file is
+   present in its assets.
+2. Check the `bump-versions` workflow runs at
+   `github.com/opentofu/registry/actions` — look for failures around the time
+   of the release.
+3. If the workflow failed, open an issue at
+   `github.com/opentofu/registry/issues` referencing the provider and version.
+
+---
+
+## Key rotation
+
+If the GPG signing key needs to be replaced (e.g. it is compromised or expires):
+
+1. **Generate a new key pair** and export the private key.
+2. **Update repository secrets**: replace `GPG_PRIVATE_KEY` and `PASSPHRASE` in
+   Settings → Secrets → Actions.
+3. **Update the Terraform Registry**: go to `registry.terraform.io` → your
+   account → GPG Keys and add the new public key. The old key can remain so
+   that previously-signed releases continue to verify.
+4. **OpenTofu Registry**: no action required. This provider was registered via
+   repository URL only (no GPG public key was submitted to opentofu/registry),
+   so the OpenTofu Registry has no stored key to rotate. New releases signed
+   with the new key will be ingested as normal.
+5. Cut the next release — both registries will use the new key from that point
+   on.
