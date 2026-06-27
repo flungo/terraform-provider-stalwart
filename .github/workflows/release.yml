@@ -1,11 +1,13 @@
 # Copyright (c) Fabrizio Lungo
 # SPDX-License-Identifier: MPL-2.0
 #
-# Builds and publishes the provider to the Terraform Registry when a semver tag
-# is pushed. Requires the repository secrets GPG_PRIVATE_KEY and PASSPHRASE,
-# matching the GPG key registered with the Terraform Registry.
+# Builds and publishes the provider to the Terraform Registry and OpenTofu
+# Registry when a semver tag is pushed. Requires the repository secrets
+# GPG_PRIVATE_KEY and PASSPHRASE, matching the GPG key registered with the
+# Terraform Registry and stored in opentofu/registry. The OpenTofu Registry
+# polls GitHub releases every ~15 minutes and ingests them automatically.
 # When those secrets are absent the release is built and published unsigned
-# (suitable for early testing; not accepted by the Terraform Registry).
+# (suitable for early testing; not accepted by either registry).
 name: release
 
 on:
