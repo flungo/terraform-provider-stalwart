@@ -183,14 +183,6 @@ pre-release tag):
 To avoid it entirely, cut stable releases from a fresh commit rather than tagging
 a commit that already carries a pre-release tag.
 
-### v0.1.0-alpha.1 and v0.1.0-alpha.2 marked as stable on GitHub and both registries
-
-These two releases were published before `prerelease: auto` was configured in
-`.goreleaser.yml` and are incorrectly listed as stable releases on GitHub.
-They can be corrected via the GitHub releases UI (Edit → mark as pre-release),
-which will update how the registries surface them. Left as-is; both registries
-treat v0.1.0 as the current stable version regardless.
-
 ### Pre-release versions not visible as "latest" on the Registry
 
 GoReleaser marks versions with a pre-release suffix (e.g. `-alpha.1`) as GitHub
