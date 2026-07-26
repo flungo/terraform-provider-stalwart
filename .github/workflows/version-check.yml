@@ -1,0 +1,19 @@
+# Copyright (c) Fabrizio Lungo
+# SPDX-License-Identifier: MPL-2.0
+#
+# Opt-in check that flags this repo (via an issue in its own repo) if a future
+# flungo/github-workflows major bump ever leaves it pinning a frozen @vN. No
+# credential needed. See flungo/github-workflows docs/runbooks/adopting-version-check.md.
+name: github-workflows version check
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'   # weekly (Mon 07:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  version-check:
+    permissions:
+      contents: read
+      issues: write
+    uses: flungo/github-workflows/.github/workflows/version-check.yml@v1
