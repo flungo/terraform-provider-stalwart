@@ -1,13 +1,10 @@
 # Copyright (c) Fabrizio Lungo
 # SPDX-License-Identifier: MPL-2.0
 #
-# Builds and publishes the provider to the Terraform Registry and OpenTofu
-# Registry when a semver tag is pushed. Requires the repository secrets
-# GPG_PRIVATE_KEY and PASSPHRASE, matching the GPG key registered with the
-# Terraform Registry and stored in opentofu/registry. The OpenTofu Registry
-# polls GitHub releases every ~15 minutes and ingests them automatically.
-# When those secrets are absent the release is built and published unsigned
-# (suitable for early testing; not accepted by either registry).
+# Builds and publishes the provider to the Terraform and OpenTofu registries on
+# a v* tag (or workflow_dispatch with a version). Delegates to the shared
+# flungo/github-workflows provider release workflow; the GPG secrets sign the
+# release (it is built unsigned when they are absent).
 name: release
 
 on:
@@ -21,71 +18,13 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-
 jobs:
-  goreleaser:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Create and push tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            echo "Tag $VERSION already exists, skipping creation"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag -a "$VERSION" -m "Release $VERSION"
-            git push origin "$VERSION"
-          fi
-
-      - name: Checkout tag
-        if: github.event_name == 'workflow_dispatch'
-        run: git checkout "${{ github.event.inputs.version }}"
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: "go.mod"
-          cache: true
-
-      - name: Check GPG availability
-        id: gpg
-        env:
-          GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        run: |
-          if [ -n "$GPG_KEY" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Import GPG key
-        if: steps.gpg.outputs.available == 'true'
-        uses: crazy-max/ghaction-import-gpg@v6
-        id: import_gpg
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.PASSPHRASE }}
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: "~> v2"
-          args: >-
-            release --clean
-            ${{ steps.gpg.outputs.available != 'true' && '--skip=sign' || '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-          # When triggered via workflow_dispatch, explicitly tell GoReleaser which
-          # tag to release. Without this, GoReleaser uses `git describe` which can
-          # pick an earlier pre-release tag if multiple tags point to the same commit.
-          GORELEASER_CURRENT_TAG: ${{ github.event.inputs.version }}
+  release:
+    permissions:
+      contents: write
+    uses: flungo/github-workflows/.github/workflows/terraform-provider-release.yml@v1
+    with:
+      version: ${{ inputs.version }}
+    secrets:
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      PASSPHRASE: ${{ secrets.PASSPHRASE }}
