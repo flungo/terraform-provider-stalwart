@@ -4,7 +4,8 @@
 
 ## Context
 
-Acceptance tests need to verify not just what the Terraform provider *reads back* from the server, but what the server *actually stored*. These are distinct: a write-path bug and a matching read-path bug can cancel each other out, making `TestCheckResourceAttr` pass while the server holds the wrong value.
+Acceptance tests need to verify not just what the Terraform provider *reads back* from the server, but what the server *actually stored*.
+These are distinct: a write-path bug and a matching read-path bug can cancel each other out, making `TestCheckResourceAttr` pass while the server holds the wrong value.
 
 An alternative approach considered was `stalwart-cli snapshot`: capture a JSON dump before and after each apply step and diff the results.
 

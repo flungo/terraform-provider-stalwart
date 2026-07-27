@@ -4,7 +4,8 @@
 
 ## Context
 
-The acceptance test harness requires pulling the `stalwartlabs/stalwart:v0.16` Docker image. In the Claude Code on the web environment, two separate network restrictions block this:
+The acceptance test harness requires pulling the `stalwartlabs/stalwart:v0.16` Docker image.
+In the Claude Code on the web environment, two separate network restrictions block this:
 
 1. **GHCR blob CDN blocked**: `pkg-containers.githubusercontent.com` returns `403` with `x-deny-reason: host_not_allowed`. A `*.githubusercontent.com` wildcard allowlist entry was added but a more specific deny rule shadows it — only an explicit entry for this exact host would fix it.
 
@@ -14,7 +15,9 @@ Additionally, `dockerd` does not persist across conversation turns and must be r
 
 ## Decision
 
-**Rely on GitHub Actions for acceptance-test execution.** GitHub-hosted runners ship Docker and can pull public images without these restrictions. The `testacc` job runs on every PR and push via `.github/workflows/test.yml`. The workflow to iterate is: push a fix, read the Actions job log, push another fix.
+**Rely on GitHub Actions for acceptance-test execution.** GitHub-hosted runners ship Docker and can pull public images without these restrictions.
+The `testacc` job runs on every PR and push via `.github/workflows/test.yml`.
+The workflow to iterate is: push a fix, read the Actions job log, push another fix.
 
 ## How to check if the restriction has been lifted
 
@@ -22,7 +25,8 @@ Additionally, `dockerd` does not persist across conversation turns and must be r
 curl -D - https://pkg-containers.githubusercontent.com/
 ```
 
-If the response contains `x-deny-reason: host_not_allowed`, the block is still in place. If the response is a normal 301/404/200 (no `x-deny-reason`), the host is reachable and `docker pull` should work.
+If the response contains `x-deny-reason: host_not_allowed`, the block is still in place.
+If the response is a normal 301/404/200 (no `x-deny-reason`), the host is reachable and `docker pull` should work.
 
 If both CDN restrictions are resolved, local acceptance tests can be run with:
 

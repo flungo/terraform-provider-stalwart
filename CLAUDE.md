@@ -12,7 +12,8 @@ Detailed reference lives in [`docs/`](docs/README.md) — read it when implement
 
 ## Branch management
 
-Claude sessions must **never commit directly to `main`**. All work happens on a feature branch.
+Claude sessions must **never commit directly to `main`**.
+All work happens on a feature branch.
 
 **At the start of every session:**
 
@@ -28,26 +29,35 @@ git fetch origin main
 git rebase origin/main   # only if fetch produced new commits
 ```
 
-Before continuing with the next task, review what changed on `main`. Read the diff and any updated docs or decision records to understand what new facts or decisions were introduced. Then:
+Before continuing with the next task, review what changed on `main`.
+Read the diff and any updated docs or decision records to understand what new facts or decisions were introduced.
+Then:
 
 - If the upstream changes affect work already done on the branch, apply the necessary adjustments (via rebase amend — see below).
 - If anything is unclear, contradicts the goal of the current session, or conflicts with a decision already made on the branch, **stop and ask the user to confirm the direction** before proceeding. Do not silently resolve ambiguous conflicts by picking one interpretation.
 
 **Commit message convention — Conventional Commits:**
 
-All commits must use [Conventional Commits](https://www.conventionalcommits.org/) prefixes: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, etc. The subject line is imperative mood, no trailing period. Keep the body for the *why*, not a re-statement of the diff.
+All commits must use [Conventional Commits](https://www.conventionalcommits.org/) prefixes: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, etc. The subject line is imperative mood, no trailing period.
+Keep the body for the *why*, not a re-statement of the diff.
 
 **Landing branches — always via PR:**
 
-Claude never pushes directly to `main`. When a branch is ready to land, open a PR and let the user merge it. This keeps `main` protected and provides a review gate even for small changes. After a PR is merged, delete the remote branch.
+Claude never pushes directly to `main`.
+When a branch is ready to land, open a PR and let the user merge it.
+This keeps `main` protected and provides a review gate even for small changes.
+After a PR is merged, delete the remote branch.
 
 **Force-push policy:**
 
-Force-pushing is allowed on feature branches (necessary after `--amend` or interactive rebase). Never force-push `main`.
+Force-pushing is allowed on feature branches (necessary after `--amend` or interactive rebase).
+Never force-push `main`.
 
 **Linear history — no merge commits:**
 
-This repo maintains a strictly linear history. Never create merge commits. All branches land on `main` via either squash or rebase, never `git merge`.
+This repo maintains a strictly linear history.
+Never create merge commits.
+All branches land on `main` via either squash or rebase, never `git merge`.
 
 **Squash vs rebase when merging to main:**
 
@@ -58,11 +68,14 @@ When in doubt, squash — a clean single commit is easier to revert and easier t
 
 **Rebase hygiene — no "fix-up" commits on a branch:**
 
-When work on a branch contains a minor inaccuracy (typo, wrong value, incorrect claim), amend or fixup the relevant existing commit rather than appending a new corrective commit. The branch history should read as though those changes were always correct — not as a record of corrections made after the fact. This applies both when correcting work in response to upstream changes on `main` and when self-correcting during the current session.
+When work on a branch contains a minor inaccuracy (typo, wrong value, incorrect claim), amend or fixup the relevant existing commit rather than appending a new corrective commit.
+The branch history should read as though those changes were always correct — not as a record of corrections made after the fact.
+This applies both when correcting work in response to upstream changes on `main` and when self-correcting during the current session.
 
 ## Stalwart API — critical facts
 
-Full reference: [docs/stalwart-api.md](docs/stalwart-api.md). The most common traps:
+Full reference: [docs/stalwart-api.md](docs/stalwart-api.md).
+The most common traps:
 
 - **JMAP endpoint is `/jmap`**, not `/api`. The generated `ref/object/*.md` curl snippets are wrong.
 - **Wire method names carry `x:` prefix**: `x:Domain/get`, `x:Account/set`, etc.
@@ -91,7 +104,8 @@ Key paths in `stalwart-src`:
 
 ## Acceptance tests — CI only (web environment)
 
-**Do not attempt to run acceptance tests locally in the Claude Code web environment.** Container image pulls are blocked by network restrictions. Push to the feature branch and iterate against the CI `testacc` job in GitHub Actions.
+**Do not attempt to run acceptance tests locally in the Claude Code web environment.** Container image pulls are blocked by network restrictions.
+Push to the feature branch and iterate against the CI `testacc` job in GitHub Actions.
 
 See [docs/decisions/002-ci-over-local.md](docs/decisions/002-ci-over-local.md) for the full context and instructions for checking whether the restriction has been lifted.
 

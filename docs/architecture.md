@@ -2,7 +2,8 @@
 
 ## Overview
 
-This is a Terraform provider for [Stalwart Mail Server](https://stalw.art) built on the **Terraform Plugin Framework** (not the legacy SDK). It targets Stalwart v0.16+, which exposes all management configuration as JMAP objects — there is no REST management API.
+This is a Terraform provider for [Stalwart Mail Server](https://stalw.art) built on the **Terraform Plugin Framework** (not the legacy SDK).
+It targets Stalwart v0.16+, which exposes all management configuration as JMAP objects — there is no REST management API.
 
 ## Package layout
 
@@ -29,14 +30,16 @@ internal/
 
 ## Client design
 
-The `internal/client` package is intentionally minimal — it does not generate Terraform schema or know about provider configuration. Its responsibilities are:
+The `internal/client` package is intentionally minimal — it does not generate Terraform schema or know about provider configuration.
+Its responsibilities are:
 
 - **Transport**: `POST /jmap` with Basic or Bearer authentication.
 - **Encoding**: `StringSet` (Go representation of `Map<T>`) and `IndexList[T]` (Go representation of `List<T>`). Both marshal to empty `{}` when empty, which is required on create. See [stalwart-api.md](stalwart-api.md#collection-encoding) for the wire format.
 - **Id detection**: `client.IsID(s)` returns true when `s` is in the Stalwart base32 alphabet (`abcdefghijklmnopqrstuvwxyz792013`). Used during import and domain ref resolution.
 - **Typed JMAP helpers**: `Get[T]`, `Set[T]`, `Query[T]` — generic wrappers that handle the JMAP envelope and decode typed responses.
 
-The client does **not** use the Stalwart CLI (`stalwart-cli`). The CLI is not bundled in the server Docker image and is a separate versioned binary.
+The client does **not** use the Stalwart CLI (`stalwart-cli`).
+The CLI is not bundled in the server Docker image and is a separate versioned binary.
 
 ## Provider / resource patterns
 
@@ -54,7 +57,10 @@ Each resource follows this structure:
 
 ## Domain references
 
-Several objects (dkim_signature, account, mailing_list, role) reference a domain. The `domain_ref` shared attribute accepts either the domain resource's id or its name. On read, the provider stores the id (stable across renames). On create, if a name is given, it resolves to an id via query.
+Several objects (dkim_signature, account, mailing_list, role) reference a domain.
+The `domain_ref` shared attribute accepts either the domain resource's id or its name.
+On read, the provider stores the id (stable across renames).
+On create, if a name is given, it resolves to an id via query.
 
 ## Plugin Framework specifics
 
