@@ -1,15 +1,9 @@
 # Terraform Provider for Stalwart
 
-A [Terraform](https://www.terraform.io) provider for the
-[Stalwart](https://stalw.art) mail and collaboration server, built on the modern
-[Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework).
+A [Terraform](https://www.terraform.io) provider for the [Stalwart](https://stalw.art) mail and collaboration server, built on the modern [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework).
 
-The provider targets **Stalwart v0.16 and later**, which removed the legacy REST
-management API and now exposes all configuration as
-[JMAP](https://jmap.io) objects through the JMAP endpoint at `/jmap`
-(negotiated via the `urn:stalwart:jmap` capability). See the
-[Stalwart schema reference](https://stalw.art/docs/ref/) for the underlying
-object definitions.
+The provider targets **Stalwart v0.16 and later**, which removed the legacy REST management API and now exposes all configuration as [JMAP](https://jmap.io) objects through the JMAP endpoint at `/jmap` (negotiated via the `urn:stalwart:jmap` capability).
+See the [Stalwart schema reference](https://stalw.art/docs/ref/) for the underlying object definitions.
 
 ## Requirements
 
@@ -36,8 +30,7 @@ provider "stalwart" {
 
 ### Authentication
 
-The provider authenticates with **either** a bearer token **or** a
-username/password pair:
+The provider authenticates with **either** a bearer token **or** a username/password pair:
 
 | Setting    | Environment variable  | Notes                                          |
 | ---------- | --------------------- | ---------------------------------------------- |
@@ -46,8 +39,8 @@ username/password pair:
 | `username` | `STALWART_USERNAME`   | HTTP Basic auth username.                       |
 | `password` | `STALWART_PASSWORD`   | HTTP Basic auth password.                       |
 
-Explicit configuration takes precedence over environment variables. Provide a
-`token`, or a `username`/`password` pair — not both.
+Explicit configuration takes precedence over environment variables.
+Provide a `token`, or a `username`/`password` pair — not both.
 
 ## Resources and data sources
 
@@ -72,9 +65,8 @@ Explicit configuration takes precedence over environment variables. Provide a
 
 ### Referencing a domain
 
-Child objects (accounts, groups, mailing lists, DKIM signatures) belong to a
-domain. Reference it either by the domain's opaque id (the idiomatic Terraform
-approach, which also tracks the dependency), or by name:
+Child objects (accounts, groups, mailing lists, DKIM signatures) belong to a domain.
+Reference it either by the domain's opaque id (the idiomatic Terraform approach, which also tracks the dependency), or by name:
 
 ```hcl
 resource "stalwart_account" "alice" {
@@ -110,8 +102,7 @@ make build
 make test
 ```
 
-Install the provider into the local plugin mirror so it can be used from a local
-Terraform configuration (see the [CLI dev override docs](https://developer.hashicorp.com/terraform/cli/config/config-file#development-overrides-for-provider-developers)):
+Install the provider into the local plugin mirror so it can be used from a local Terraform configuration (see the [CLI dev override docs](https://developer.hashicorp.com/terraform/cli/config/config-file#development-overrides-for-provider-developers)):
 
 ```sh
 make install
@@ -124,8 +115,7 @@ make fmt
 make lint
 ```
 
-Generate the registry documentation (uses
-[`tfplugindocs`](https://github.com/hashicorp/terraform-plugin-docs)):
+Generate the registry documentation (uses [`tfplugindocs`](https://github.com/hashicorp/terraform-plugin-docs)):
 
 ```sh
 make generate
@@ -133,18 +123,15 @@ make generate
 
 ### Acceptance tests
 
-Acceptance tests create and destroy **real** resources against a live Stalwart
-server. By default the test harness boots a throwaway Stalwart container
-automatically (Docker required), so no instance or credentials are needed:
+Acceptance tests create and destroy **real** resources against a live Stalwart server.
+By default the test harness boots a throwaway Stalwart container automatically (Docker required), so no instance or credentials are needed:
 
 ```sh
 make testacc
 ```
 
-Override the Stalwart image (e.g. to test another version) with
-`STALWART_TEST_IMAGE`. To run against an externally-managed server instead of
-the container harness, export `STALWART_ENDPOINT` (and `STALWART_TOKEN`, or
-`STALWART_USERNAME`/`STALWART_PASSWORD`):
+Override the Stalwart image (e.g. to test another version) with `STALWART_TEST_IMAGE`.
+To run against an externally-managed server instead of the container harness, export `STALWART_ENDPOINT` (and `STALWART_TOKEN`, or `STALWART_USERNAME`/`STALWART_PASSWORD`):
 
 ```sh
 export STALWART_ENDPOINT=https://mail.test.example.com
@@ -157,24 +144,20 @@ make testacc
 
 ### Coverage
 
-`make testacc` writes a coverage profile (`coverage.out`) over the provider and
-client packages. Enforce the minimum threshold and render an HTML report with:
+`make testacc` writes a coverage profile (`coverage.out`) over the provider and client packages.
+Enforce the minimum threshold and render an HTML report with:
 
 ```sh
 make cover-check   # fails if total coverage < COVERAGE_MIN (default 75%)
 make cover-html    # writes coverage.html
 ```
 
-CI runs the same check on the acceptance job and uploads the report as an
-artifact; the total is also printed to the job summary.
+CI runs the same check on the acceptance job and uploads the report as an artifact; the total is also printed to the job summary.
 
 ## Releasing
 
-Releases are produced by [GoReleaser](https://goreleaser.com) and published to
-the Terraform Registry by the [`release`](./.github/workflows/release.yml)
-GitHub Actions workflow when a `v*` tag is pushed. The workflow GPG-signs the
-checksums; configure the `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets
-with the key registered with the Terraform Registry.
+Releases are produced by [GoReleaser](https://goreleaser.com) and published to the Terraform Registry by the [`release`](./.github/workflows/release.yml) GitHub Actions workflow when a `v*` tag is pushed.
+The workflow GPG-signs the checksums; configure the `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets with the key registered with the Terraform Registry.
 
 ## License
 

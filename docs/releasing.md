@@ -1,45 +1,34 @@
 # Releasing terraform-provider-stalwart
 
-This document covers the end-to-end release process: versioning decisions,
-how to cut a release, and how to verify it landed correctly.
+This document covers the end-to-end release process: versioning decisions, how to cut a release, and how to verify it landed correctly.
 
 ## One-time setup (already done)
 
 ### GPG signing key
 
-Both registries require every provider release to include a GPG signature over
-the `SHA256SUMS` file. The release workflow reads two repository secrets:
+Both registries require every provider release to include a GPG signature over the `SHA256SUMS` file.
+The release workflow reads two repository secrets:
 
 | Secret | How to obtain |
 |---|---|
 | `GPG_PRIVATE_KEY` | `gpg --armor --export-secret-keys <fingerprint>` |
 | `PASSPHRASE` | The passphrase for the key |
 
-The corresponding **public key** must be registered at
-[registry.terraform.io](https://registry.terraform.io) under your account →
-**GPG Keys**. Without it the Terraform Registry accepts the release files but
-cannot verify the signature and will reject ingestion.
+The corresponding **public key** must be registered at [registry.terraform.io](https://registry.terraform.io) under your account → **GPG Keys**.
+Without it the Terraform Registry accepts the release files but cannot verify the signature and will reject ingestion.
 
-The same GPG public key is stored in the OpenTofu registry's provider metadata
-at `providers/f/flungo/stalwart.json` in
-[opentofu/registry](https://github.com/opentofu/registry). This was submitted
-once as part of the initial provider registration PR and does not need to change
-unless the signing key is rotated (see [Key rotation](#key-rotation) below).
+The same GPG public key is stored in the OpenTofu registry's provider metadata at `providers/f/flungo/stalwart.json` in [opentofu/registry](https://github.com/opentofu/registry).
+This was submitted once as part of the initial provider registration PR and does not need to change unless the signing key is rotated (see [Key rotation](#key-rotation) below).
 
 ### Terraform Registry connection
 
-The Terraform Registry is connected to this repo via a **GitHub App** (visible
-under `github.com/flungo/terraform-provider-stalwart` → Settings → GitHub
-Apps). This app fires on every new GitHub release and triggers automatic
-ingestion — no manual sync needed after the first connection was established.
+The Terraform Registry is connected to this repo via a **GitHub App** (visible under `github.com/flungo/terraform-provider-stalwart` → Settings → GitHub Apps).
+This app fires on every new GitHub release and triggers automatic ingestion — no manual sync needed after the first connection was established.
 
 ### OpenTofu Registry registration
 
-The provider is registered at
-[search.opentofu.org/provider/flungo/stalwart](https://search.opentofu.org/provider/flungo/stalwart)
-via a one-time PR to [opentofu/registry](https://github.com/opentofu/registry)
-(PR [#4489](https://github.com/opentofu/registry/pull/4489), now merged). No
-further one-time setup is required.
+The provider is registered at [search.opentofu.org/provider/flungo/stalwart](https://search.opentofu.org/provider/flungo/stalwart) via a one-time PR to [opentofu/registry](https://github.com/opentofu/registry) (PR [#4489](https://github.com/opentofu/registry/pull/4489), now merged).
+No further one-time setup is required.
 
 ---
 
@@ -63,8 +52,8 @@ Within v0, follow semver loosely:
 
 ### Option A — workflow_dispatch (recommended)
 
-Use the Actions UI or trigger via the GitHub API. This creates the tag automatically
-if it doesn't already exist.
+Use the Actions UI or trigger via the GitHub API.
+This creates the tag automatically if it doesn't already exist.
 
 1. Go to **Actions → release → Run workflow**
 2. Enter the version (e.g. `v0.2.0`). Must start with `v`.
@@ -87,8 +76,8 @@ git tag -a v0.2.0 -m "Release v0.2.0"
 git push origin v0.2.0
 ```
 
-Both options are equivalent. The workflow checks out the tag, runs GoReleaser,
-and publishes the GitHub release with signed binaries.
+Both options are equivalent.
+The workflow checks out the tag, runs GoReleaser, and publishes the GitHub release with signed binaries.
 
 ---
 
@@ -129,8 +118,7 @@ and publishes the GitHub release with signed binaries.
 
 ## Updating the config repo after a release
 
-After publishing a stable release, update the version constraint in
-`flungo/stalwart.flungo.net`:
+After publishing a stable release, update the version constraint in `flungo/stalwart.flungo.net`:
 
 ```hcl
 # terraform/versions.tf
@@ -142,8 +130,7 @@ required_providers {
 }
 ```
 
-Commit the change on a branch, let the `fresh` CI job verify it downloads and applies
-cleanly, then merge to main.
+Commit the change on a branch, let the `fresh` CI job verify it downloads and applies cleanly, then merge to main.
 
 ---
 
@@ -151,8 +138,8 @@ cleanly, then merge to main.
 
 ### "Missing SHASUMS signature file" on the Registry
 
-The `GPG_PRIVATE_KEY` or `PASSPHRASE` secret is absent, empty, or incorrect, OR
-the public key is not registered on the Registry. Check:
+The `GPG_PRIVATE_KEY` or `PASSPHRASE` secret is absent, empty, or incorrect, OR the public key is not registered on the Registry.
+Check:
 
 1. Both secrets are set in the provider repo (Settings → Secrets → Actions)
 2. The public key fingerprint matches what's registered at registry.terraform.io
@@ -165,38 +152,31 @@ the public key is not registered on the Registry. Check:
 
 ### Tag already exists when using workflow_dispatch
 
-The workflow skips tag creation and builds from the existing tag. This is safe — use
-it to re-run a release if the workflow failed partway through.
+The workflow skips tag creation and builds from the existing tag.
+This is safe — use it to re-run a release if the workflow failed partway through.
 
 ### GoReleaser releases to the wrong tag (422 asset-already-exists errors)
 
-This happens when a pre-release tag (e.g. `v0.1.0-alpha.3`) and the new stable
-tag (e.g. `v0.1.0`) both point to the same commit. GoReleaser uses `git describe`
-to detect the current version and can pick the pre-release tag instead of the
-intended one, then tries to upload assets to the existing pre-release GitHub
-release — which already has them — and fails with HTTP 422.
+This happens when a pre-release tag (e.g. `v0.1.0-alpha.3`) and the new stable tag (e.g. `v0.1.0`) both point to the same commit.
+GoReleaser uses `git describe` to detect the current version and can pick the pre-release tag instead of the intended one, then tries to upload assets to the existing pre-release GitHub release — which already has them — and fails with HTTP 422.
 
-The release workflow passes `GORELEASER_CURRENT_TAG` to prevent this, but if you
-encounter it (e.g. after pushing a tag manually on a commit that already has a
-pre-release tag):
+The release workflow passes `GORELEASER_CURRENT_TAG` to prevent this, but if you encounter it (e.g. after pushing a tag manually on a commit that already has a pre-release tag):
 
 1. Delete the incorrectly-targeted GitHub release (do **not** delete the tag itself)
 2. Re-run the release workflow — `GORELEASER_CURRENT_TAG` will ensure GoReleaser
    creates a fresh release at the correct tag
 
-To avoid it entirely, cut stable releases from a fresh commit rather than tagging
-a commit that already carries a pre-release tag.
+To avoid it entirely, cut stable releases from a fresh commit rather than tagging a commit that already carries a pre-release tag.
 
 ### Pre-release versions not visible as "latest" on the Registry
 
-GoReleaser marks versions with a pre-release suffix (e.g. `-alpha.1`) as GitHub
-pre-releases. The Registry reflects this — pre-release versions are listed but
-not shown as the current stable version.
+GoReleaser marks versions with a pre-release suffix (e.g. `-alpha.1`) as GitHub pre-releases.
+The Registry reflects this — pre-release versions are listed but not shown as the current stable version.
 
 ### New version not appearing on the OpenTofu Registry after 30 minutes
 
-The OpenTofu Registry polls GitHub releases every 15 minutes. If a version is
-still absent after 30 minutes:
+The OpenTofu Registry polls GitHub releases every 15 minutes.
+If a version is still absent after 30 minutes:
 
 1. Confirm the GitHub release is not a draft and the `SHA256SUMS.sig` file is
    present in its assets.

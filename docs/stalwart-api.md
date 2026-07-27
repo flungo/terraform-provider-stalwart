@@ -1,6 +1,7 @@
 # Stalwart API Reference
 
-Corrected facts about the Stalwart v0.16+ JMAP management API. Every claim here has been verified against the upstream source code and is noted with the relevant file path.
+Corrected facts about the Stalwart v0.16+ JMAP management API.
+Every claim here has been verified against the upstream source code and is noted with the relevant file path.
 
 **Upstream sources** (fact-checked at these commits):
 
@@ -16,7 +17,8 @@ git clone --depth 1 https://github.com/stalwartlabs/website.git    /tmp/stalwart
 ls /tmp/stalwart-website/src/content/docs/docs/ref/object/
 ```
 
-The official docs site (`stalw.art/docs`) blocks automated fetches (HTTP 403). The GitHub raw API rate-limits unauthenticated requests — prefer a shallow `git clone`.
+The official docs site (`stalw.art/docs`) blocks automated fetches (HTTP 403).
+The GitHub raw API rate-limits unauthenticated requests — prefer a shallow `git clone`.
 
 ## JMAP endpoint
 
@@ -29,7 +31,8 @@ The official docs site (`stalw.art/docs`) blocks automated fetches (HTTP 403). T
 
 ## Capability URN
 
-`urn:stalwart:jmap` (plus `urn:ietf:params:jmap:core`). Not `urn:stalwart:core`.
+`urn:stalwart:jmap` (plus `urn:ietf:params:jmap:core`).
+Not `urn:stalwart:core`.
 
 VERIFIED: `crates/jmap-proto/src/request/capability.rs` (`Capability::Stalwart => "urn:stalwart:jmap"`).
 
@@ -37,13 +40,16 @@ VERIFIED: `crates/jmap-proto/src/request/capability.rs` (`Capability::Stalwart =
 
 Method names on the wire carry an **`x:` prefix**: `x:Domain/get`, `x:Account/set`, `x:DkimSignature/query`, etc.
 
-VERIFIED: `crates/jmap-proto/src/request/method.rs` (`format!("x:{}/{}", obj, method)` and `s.strip_prefix("x:")`). The CLI omits the prefix in display output but it is required on the wire.
+VERIFIED: `crates/jmap-proto/src/request/method.rs` (`format!("x:{}/{}", obj, method)` and `s.strip_prefix("x:")`).
+The CLI omits the prefix in display output but it is required on the wire.
 
-Standard JMAP semantics: `Foo/get`, `Foo/set` (create/update/destroy), `Foo/query`. Singletons use the literal id `"singleton"`.
+Standard JMAP semantics: `Foo/get`, `Foo/set` (create/update/destroy), `Foo/query`.
+Singletons use the literal id `"singleton"`.
 
 ## Object ids
 
-Objects are keyed by an **opaque server-generated id** (`id` field). Child objects reference their parent via a field like `domainId` — the parent's id, not its name.
+Objects are keyed by an **opaque server-generated id** (`id` field).
+Child objects reference their parent via a field like `domainId` — the parent's id, not its name.
 
 **The id is NOT a ULID.** It is a `u64` rendered in a custom base32 alphabet:
 
@@ -51,11 +57,13 @@ Objects are keyed by an **opaque server-generated id** (`id` field). Child objec
 abcdefghijklmnopqrstuvwxyz792013
 ```
 
-1–13 lowercase characters. Id `0` → `"a"`.
+1–13 lowercase characters.
+Id `0` → `"a"`.
 
 VERIFIED: `crates/types/src/id.rs` + `crates/utils/src/codec/base32_custom.rs`.
 
-`client.IsID(s)` in this provider recognises this alphabet to distinguish an opaque id from a human-friendly reference (name, email, description). Human refs always contain `.`, `@`, space, or an uppercase letter — none of which are in the alphabet.
+`client.IsID(s)` in this provider recognises this alphabet to distinguish an opaque id from a human-friendly reference (name, email, description).
+Human refs always contain `.`, `@`, space, or an uppercase letter — none of which are in the alphabet.
 
 ## Accounts and groups
 
@@ -68,7 +76,9 @@ There is no separate Group JMAP object type.
 
 ## DNS records
 
-DNS recommendations are **not a separate JMAP method**. They are the read-only `dnsZoneFile` text field on the `Domain` object. The `data.stalwart_dns_records` data source reads that field.
+DNS recommendations are **not a separate JMAP method**.
+They are the read-only `dnsZoneFile` text field on the `Domain` object.
+The `data.stalwart_dns_records` data source reads that field.
 
 ## Collection encoding
 
@@ -84,7 +94,8 @@ VERIFIED: `crates/registry/src/types/map.rs:222` (`map.serialize_entry(&item.as_
 
 Used by: Domain `aliases`; Account/Group `memberGroupIds`; MailingList `recipients`; Role `roleIds`/`enabledPermissions`/`disabledPermissions`; DkimSignature `headers`; nested `roles.roleIds`, permission lists.
 
-In Go: modelled as `StringSet` (`internal/client/collections.go`). Marshals empty as `{}` (required-present on create).
+In Go: modelled as `StringSet` (`internal/client/collections.go`).
+Marshals empty as `{}` (required-present on create).
 
 **Model as `types.Set` in Terraform schema** — the server returns `Map<T>` fields in canonical (sorted) order, so `types.List` would produce "inconsistent result after apply" whenever config order differs from server order.
 
@@ -96,7 +107,8 @@ VERIFIED: `crates/registry/src/types/list.rs:168` (`map.serialize_entry(&key.to_
 
 Used by: Account/Group `credentials` and `aliases` (`List<EmailAlias>`).
 
-In Go: modelled as `IndexList[T]` (`internal/client/collections.go`). Marshals empty as `{}`.
+In Go: modelled as `IndexList[T]` (`internal/client/collections.go`).
+Marshals empty as `{}`.
 
 **Model as `types.List`** — `List<T>` fields are genuinely ordered.
 
@@ -110,7 +122,8 @@ In Go: modelled as `IndexList[T]` (`internal/client/collections.go`). Marshals e
 
 ## Optional + Computed attributes
 
-**The server applies defaults and always returns collection fields** → Terraform attributes for such fields must be `Optional + Computed` (not bare `Optional`). A bare `Optional` attribute that the server defaults triggers "Provider produced inconsistent result after apply" (was null, now server value).
+**The server applies defaults and always returns collection fields** → Terraform attributes for such fields must be `Optional + Computed` (not bare `Optional`).
+A bare `Optional` attribute that the server defaults triggers "Provider produced inconsistent result after apply" (was null, now server value).
 
 Examples:
 
@@ -127,24 +140,30 @@ Such attributes use `Optional + Computed` with a `UseStateForUnknown` plan modif
 invalidProperties: Password is too weak ... (properties: [secret])
 ```
 
-VERIFIED: `crates/common/src/network/security.rs` (`zxcvbn::zxcvbn`, `password_min_strength`). Acceptance tests use an uncommon multi-word passphrase.
+VERIFIED: `crates/common/src/network/security.rs` (`zxcvbn::zxcvbn`, `password_min_strength`).
+Acceptance tests use an uncommon multi-word passphrase.
 
 ## Domain name validation
 
 **Domain names must have a recognised TLD.** `is_valid_domain` (`crates/utils/src/lib.rs:356`) accepts a name only if its TLD is in the public suffix list or is one of: `test`, `localhost`, `local`, `internal`.
 
-`.example` is rejected (`invalidPatch: Invalid domain name`). Acceptance tests use `*.test`.
+`.example` is rejected (`invalidPatch: Invalid domain name`).
+Acceptance tests use `*.test`.
 
 ## Permission values
 
-**Permissions are camelCase JMAP identifiers** (e.g. `emailSend`, `emailReceive`, `impersonate`), not kebab-case. Invalid values are rejected: `invalidPatch: Invalid key for object property`.
+**Permissions are camelCase JMAP identifiers** (e.g. `emailSend`, `emailReceive`, `impersonate`), not kebab-case.
+Invalid values are rejected: `invalidPatch: Invalid key for object property`.
 
-VERIFIED: `crates/registry/src/schema/enums_impl.rs` (`Permission::EmailSend => "emailSend"`). The full list is the `Permission` enum in `crates/registry/src/schema/enums.rs`.
+VERIFIED: `crates/registry/src/schema/enums_impl.rs` (`Permission::EmailSend => "emailSend"`).
+The full list is the `Permission` enum in `crates/registry/src/schema/enums.rs`.
 
 ## Duration fields
 
-**Duration fields are `u64` milliseconds on the wire**, not a string. Sending `"90d"` is rejected (`invalidPatch: Invalid path for Duration`).
+**Duration fields are `u64` milliseconds on the wire**, not a string.
+Sending `"90d"` is rejected (`invalidPatch: Invalid path for Duration`).
 
 VERIFIED: `crates/registry/src/types/duration.rs` (serialize/deserialize as `u64` millis).
 
-The provider accepts the friendly string form (`90d`, `1h`, `500ms`; units d/h/m/s/ms, no unit = ms) and converts using `parseDuration`/`formatDuration`. Applies to: dkim `expiry` (`expire` on the wire).
+The provider accepts the friendly string form (`90d`, `1h`, `500ms`; units d/h/m/s/ms, no unit = ms) and converts using `parseDuration`/`formatDuration`.
+Applies to: dkim `expiry` (`expire` on the wire).
