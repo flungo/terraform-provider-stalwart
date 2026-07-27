@@ -1,0 +1,6 @@
+# URLs the external Markdown-link sweep should skip: those that legitimately
+# 403/404 while unauthenticated (a 404 can be an existence-hiding response), or
+# hosts that rate-limit unauthenticated bots. One regex per line; `#` comments
+# supported. Regenerate from this repo's own token-enabled sweep — never copy
+# another repo's entries (see flungo/github-workflows
+# docs/runbooks/adopting-markdown-workflows.md).

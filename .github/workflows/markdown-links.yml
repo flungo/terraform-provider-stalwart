@@ -1,0 +1,36 @@
+# Copyright (c) Fabrizio Lungo
+# SPDX-License-Identifier: MPL-2.0
+#
+# Markdown link validation. The internal job (offline relative-link + anchor
+# check) blocks on pull_request/push; the external job (online URL sweep) runs
+# on schedule/workflow_dispatch and reports breakage via a single auto-updated
+# issue. URLs that legitimately 403/404 while unauthenticated go in
+# .lycheeignore. Delegates to the shared flungo/github-workflows markdown-links
+# workflow. See flungo/github-workflows docs/runbooks/adopting-markdown-workflows.md.
+name: Markdown links
+
+on:
+  pull_request:
+    paths:
+      - "**/*.md"
+      - ".lycheeignore"
+      - ".github/workflows/markdown-links.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "**/*.md"
+      - ".lycheeignore"
+      - ".github/workflows/markdown-links.yml"
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  links:
+    permissions:
+      contents: read
+      issues: write
+    uses: flungo/github-workflows/.github/workflows/markdown-links.yml@v1
+    secrets:
+      LYCHEE_GITHUB_TOKEN: ${{ secrets.LYCHEE_GITHUB_TOKEN }}
