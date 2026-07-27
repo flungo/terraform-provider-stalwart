@@ -1,0 +1,21 @@
+# Keep the third-party actions pinned directly in this repo's own workflows
+# current: test.yml (checkout, setup-go, upload-artifact, github-script) and
+# regression.yml (github-script). The reusable flungo/github-workflows callers
+# are pinned to the moving @v1 branch and managed upstream — their internal
+# action bumps ride @v1 out automatically — so they are ignored here. Updates
+# are grouped into a single weekly pull request. See flungo/github-workflows
+# ADR-007.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "flungo/github-workflows/*"
+    commit-message:
+      prefix: ci
