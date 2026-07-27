@@ -3,6 +3,7 @@
 Corrected facts about the Stalwart v0.16+ JMAP management API. Every claim here has been verified against the upstream source code and is noted with the relevant file path.
 
 **Upstream sources** (fact-checked at these commits):
+
 - Code: `stalwartlabs/stalwart` @ `68946d4` (2026-05-29)
 - Docs: `stalwartlabs/website` @ `8044db7` (2026-05-29)
 
@@ -46,7 +47,7 @@ Objects are keyed by an **opaque server-generated id** (`id` field). Child objec
 
 **The id is NOT a ULID.** It is a `u64` rendered in a custom base32 alphabet:
 
-```
+```text
 abcdefghijklmnopqrstuvwxyz792013
 ```
 
@@ -59,6 +60,7 @@ VERIFIED: `crates/types/src/id.rs` + `crates/utils/src/codec/base32_custom.rs`.
 ## Accounts and groups
 
 **Accounts and groups are the same `Account` object**, discriminated by `@type`:
+
 - `"User"` → account
 - `"Group"` → group
 
@@ -111,6 +113,7 @@ In Go: modelled as `IndexList[T]` (`internal/client/collections.go`). Marshals e
 **The server applies defaults and always returns collection fields** → Terraform attributes for such fields must be `Optional + Computed` (not bare `Optional`). A bare `Optional` attribute that the server defaults triggers "Provider produced inconsistent result after apply" (was null, now server value).
 
 Examples:
+
 - `reportAddressUri` defaults to `"mailto:postmaster"` (`structs_impl.rs:19512`).
 - Collection fields are non-`Option` in the Rust structs, so the server always returns them (as `{}` → empty collection on read).
 
@@ -120,7 +123,7 @@ Such attributes use `Optional + Computed` with a `UseStateForUnknown` plan modif
 
 **Account passwords are strength-checked with zxcvbn.** A weak password is rejected at create/update:
 
-```
+```text
 invalidProperties: Password is too weak ... (properties: [secret])
 ```
 

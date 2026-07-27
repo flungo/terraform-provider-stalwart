@@ -51,6 +51,7 @@ further one-time setup is required.
 | First stable release | `v1.0.0` | Once the migration is complete and the provider API is considered stable |
 
 Within v0, follow semver loosely:
+
 - **Minor bump** (`v0.x.0`): new resources or data sources; any breaking schema change
 - **Patch bump** (`v0.x.y`): bug fixes, documentation, non-breaking improvements
 - **Pre-releases** (`v0.x.y-alpha.n`, `-beta.n`, `-rc.n`): use for early testing;
@@ -70,7 +71,8 @@ if it doesn't already exist.
 3. Click **Run workflow**.
 
 Or via Claude Code / MCP:
-```
+
+```text
 mcp__github__actions_run_trigger
   method: run_workflow
   workflow_id: release.yml
@@ -151,6 +153,7 @@ cleanly, then merge to main.
 
 The `GPG_PRIVATE_KEY` or `PASSPHRASE` secret is absent, empty, or incorrect, OR
 the public key is not registered on the Registry. Check:
+
 1. Both secrets are set in the provider repo (Settings → Secrets → Actions)
 2. The public key fingerprint matches what's registered at registry.terraform.io
 
@@ -176,6 +179,7 @@ release — which already has them — and fails with HTTP 422.
 The release workflow passes `GORELEASER_CURRENT_TAG` to prevent this, but if you
 encounter it (e.g. after pushing a tag manually on a commit that already has a
 pre-release tag):
+
 1. Delete the incorrectly-targeted GitHub release (do **not** delete the tag itself)
 2. Re-run the release workflow — `GORELEASER_CURRENT_TAG` will ensure GoReleaser
    creates a fresh release at the correct tag

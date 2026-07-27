@@ -6,7 +6,7 @@ This is a Terraform provider for [Stalwart Mail Server](https://stalw.art) built
 
 ## Package layout
 
-```
+```text
 internal/
 ├── acctest/      Container harness for acceptance tests
 │   ├── container.go   Spins up Stalwart in Docker, wires the provider config
