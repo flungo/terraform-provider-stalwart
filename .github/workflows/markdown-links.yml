@@ -11,17 +11,9 @@ name: Markdown links
 
 on:
   pull_request:
-    paths:
-      - "**/*.md"
-      - ".lycheeignore"
-      - ".github/workflows/markdown-links.yml"
   push:
     branches:
       - main
-    paths:
-      - "**/*.md"
-      - ".lycheeignore"
-      - ".github/workflows/markdown-links.yml"
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
