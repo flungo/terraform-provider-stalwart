@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/flungo/terraform-provider-stalwart/internal/client"
 )
@@ -223,6 +224,111 @@ resource "stalwart_domain" "test" {
   dkim_management = "Manual"
 }
 `, name)
+}
+
+// TestAccDomainSubjectAlternativeNamesOrder verifies that the order of
+// subject_alternative_names survives the round-trip to the server unchanged,
+// and that reordering alone is a diff the provider applies.
+//
+// Stalwart builds the ACME order from this collection in order and submits an
+// empty Subject, so the first entry becomes the issued certificate's Subject
+// Common Name. Anything that sorts the collection on the way through therefore
+// silently changes which hostname the certificate is issued for.
+func TestAccDomainSubjectAlternativeNamesOrder(t *testing.T) {
+	c := accClient(t)
+	const name = "tf-acc-domain-sans.test"
+	const resourceName = "stalwart_domain.sans"
+
+	// The orders exercised below are deliberately not alphabetical: "mail"
+	// sorts last of the three, so any sorting in the provider, the client, or
+	// the server surfaces here rather than passing by coincidence.
+	checkOrder := func(first, second, third string) resource.TestCheckFunc {
+		return resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttr(resourceName, "subject_alternative_names.#", "3"),
+			resource.TestCheckResourceAttr(resourceName, "subject_alternative_names.0", first),
+			resource.TestCheckResourceAttr(resourceName, "subject_alternative_names.1", second),
+			resource.TestCheckResourceAttr(resourceName, "subject_alternative_names.2", third),
+			checkServerDomain(c, resourceName, func(d client.Domain) error {
+				return firstErr(
+					wantVariant("certificateManagement", d.CertificateManagement, "Automatic"),
+					wantOrderedSet("certificateManagement.subjectAlternativeNames",
+						d.CertificateManagement.SubjectAlternativeNames, first, second, third),
+				)
+			}),
+		)
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDomainConfigSANs(name, `["mail", "autoconfig", "autodiscover"]`),
+				Check:  checkOrder("mail", "autoconfig", "autodiscover"),
+			},
+			// Same members as are already on the server, different order. This is
+			// the case a set-typed attribute silently swallows: membership is
+			// unchanged, so only an order-aware type plans anything at all.
+			// ExpectResourceAction asserts the diff directly — without it a
+			// no-op plan would surface only as a confusing state mismatch below.
+			{
+				Config: testAccDomainConfigSANs(name, `["autodiscover", "mail", "autoconfig"]`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(resourceName, plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: checkOrder("autodiscover", "mail", "autoconfig"),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateId:     name,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// testAccDomainConfigSANs builds a domain with Automatic certificate management
+// and the given subject_alternative_names list.
+//
+// Two constraints shape this config:
+//
+//   - The ACME contact deliberately does not derive from the domain name.
+//     Stalwart registers the ACME account on create, and Let's Encrypt rejects a
+//     contact whose domain has no valid public suffix — which ".test" does not.
+//   - Stalwart rejects acmeProviderId without Automatic DNS management, since
+//     DNS-01 challenges are published into the domain's zone. The local Tsig
+//     server validates only the key format and makes no outbound calls, as in
+//     testAccDomainConfigAutoDNS.
+func testAccDomainConfigSANs(name, sans string) string {
+	return fmt.Sprintf(`
+resource "stalwart_acme_provider" "sans" {
+  challenge_type = "Dns01"
+  directory      = "https://acme-staging-v02.api.letsencrypt.org/directory"
+  contact        = ["mailto:acme@stalwart-tf-acc.net"]
+}
+
+resource "stalwart_dns_server" "sans" {
+  type           = "Tsig"
+  description    = "tf-acc-sans"
+  host           = "127.0.0.1"
+  key_name       = "test.key."
+  key            = "dGYtYWNjLXRzaWctdGVzdC1rZXktMzItYnl0ZXMhIQ=="
+  protocol       = "udp"
+  tsig_algorithm = "hmac-sha256"
+}
+
+resource "stalwart_domain" "sans" {
+  name                      = %[1]q
+  certificate_management    = "Automatic"
+  acme_provider_id          = stalwart_acme_provider.sans.id
+  subject_alternative_names = %[2]s
+  dns_management            = "Automatic"
+  dns_server_id             = stalwart_dns_server.sans.id
+}
+`, name, sans)
 }
 
 func testAccDomainConfigUpdated(name string) string {

@@ -58,6 +58,42 @@ resource "stalwart_domain" "example" {
 }
 `
 
+// acmeProviderFixture is the prerequisite ACME provider that fragment examples
+// reference as stalwart_acme_provider.example.
+//
+// Creating one is not inert: Stalwart eagerly registers an ACME account, so the
+// CA validates the contact address. It needs a domain with a real public suffix
+// that Let's Encrypt does not blocklist — ".test" is rejected with "Domain name
+// does not end with a valid public suffix", and "example.com"/"example.org"
+// with "contact email has forbidden domain". That is precisely why the
+// published stalwart_acme_provider example, which uses a documentation domain
+// and the production directory, is not among the applied examples below.
+const acmeProviderFixture = `
+resource "stalwart_acme_provider" "example" {
+  challenge_type = "Dns01"
+  directory      = "https://acme-staging-v02.api.letsencrypt.org/directory"
+  contact        = ["mailto:acme@stalwart-tf-acc.net"]
+}
+`
+
+// dnsServerFixture is the prerequisite DNS server that fragment examples
+// reference as stalwart_dns_server.example. Stalwart rejects a domain carrying
+// an acmeProviderId without Automatic DNS management, because the DNS-01
+// challenge is answered from the domain's own zone — so any example of
+// automatic certificates needs one of these too. The local Tsig server
+// validates only the key format and makes no outbound calls.
+const dnsServerFixture = `
+resource "stalwart_dns_server" "example" {
+  type           = "Tsig"
+  description    = "tf-acc-examples"
+  host           = "127.0.0.1"
+  key_name       = "test.key."
+  key            = "dGYtYWNjLXRzaWctdGVzdC1rZXktMzItYnl0ZXMhIQ=="
+  protocol       = "udp"
+  tsig_algorithm = "hmac-sha256"
+}
+`
+
 // TestAccExampleMain applies the complete examples/main.tf end-to-end: every
 // resource type plus a data source, in one dependency-correct configuration.
 func TestAccExampleMain(t *testing.T) {
@@ -120,6 +156,7 @@ func TestAccExampleResources(t *testing.T) {
 	}{
 		"domain": {
 			file:    "resources/stalwart_domain/resource.tf",
+			fixture: acmeProviderFixture + dnsServerFixture,
 			checkID: "stalwart_domain.example",
 		},
 		"role": {

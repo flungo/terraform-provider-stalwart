@@ -308,6 +308,20 @@ func wantSetPtr(field string, got *client.StringSet, want ...string) error {
 	return wantSet(field, got, want...)
 }
 
+// wantOrderedSet asserts that a *OrderedStringSet contains exactly want, in the
+// same order. Unlike wantSet this is deliberately order-sensitive: it guards
+// fields where Stalwart acts on element position (see client.OrderedStringSet).
+func wantOrderedSet(field string, got *client.OrderedStringSet, want ...string) error {
+	var have []string
+	if got != nil {
+		have = []string(*got)
+	}
+	if fmt.Sprint(have) != fmt.Sprint(want) {
+		return fmt.Errorf("%s: got %v, want %v (order is significant)", field, have, want)
+	}
+	return nil
+}
+
 // wantSet asserts that a *StringSet contains exactly want (order-insensitive).
 func wantSet(field string, got *client.StringSet, want ...string) error {
 	var have []string

@@ -79,10 +79,12 @@ The most common traps:
 
 - **JMAP endpoint is `/jmap`**, not `/api`. The generated `ref/object/*.md` curl snippets are wrong.
 - **Wire method names carry `x:` prefix**: `x:Domain/get`, `x:Account/set`, etc.
-- **Collections are JSON objects, not arrays.** `Map<T>` → `{"value": true}` (use `types.Set`). `List<T>` → `{"0": item, "1": item}` (use `types.List`).
+- **Collections are JSON objects, not arrays.** `Map<T>` → `{"value": true}`. `List<T>` → `{"0": item, "1": item}` (use `types.List`).
+- **`Map<T>` is order-preserving** (a `Vec<T>` server-side). Model it as `types.Set` + `StringSet` unless the server acts on element order, in which case use `types.List` + `OrderedStringSet` — never `map[string]bool`, which `encoding/json` sorts.
 - **Server defaults and always-returns collections** → attributes must be `Optional + Computed` with `UseStateForUnknown`.
 - **Duration fields are `u64` milliseconds** on the wire. The provider converts from/to friendly strings (`90d`, `1h`, `500ms`).
 - **Domain names need a recognised TLD.** Use `*.test` in acceptance tests, not `*.example`.
+- **ACME contact addresses need a real public suffix, and `.test` is not one.** Creating a `stalwart_acme_provider` is not inert — Stalwart registers an ACME account immediately and the CA validates the contact. Let's Encrypt rejects `.test` ("no valid public suffix") *and* the `example.*` documentation domains ("forbidden domain"), so acceptance tests use `stalwart-tf-acc.net` against the staging directory. This is also why published examples that create one are excluded from the applied-examples test.
 
 ## Source verification
 

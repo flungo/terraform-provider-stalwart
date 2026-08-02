@@ -4,6 +4,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -56,6 +57,90 @@ func (s *StringSet) UnmarshalJSON(data []byte) error {
 		out = append(out, k)
 	}
 	sort.Strings(out)
+	*s = out
+	return nil
+}
+
+// OrderedStringSet models a Stalwart `Map<T>` whose element order is
+// significant. It shares StringSet's wire format ({"<value>": true, ...}) but
+// preserves the caller's order in both directions.
+//
+// Stalwart's `Map<T>` is a `Vec<T>` behind a JSON-object encoding (upstream
+// crates/registry/src/types/map.rs): push() appends after a containment check
+// and nothing sorts, so element order round-trips through the server intact.
+// That matters wherever the server treats the first element specially — most
+// notably `certificateManagement.subjectAlternativeNames`, whose first entry
+// becomes the issued certificate's Subject Common Name.
+//
+// StringSet cannot serve those fields: it marshals via map[string]bool, and
+// encoding/json sorts map keys, so the order reaching the server is always
+// alphabetical no matter what the practitioner configured.
+type OrderedStringSet []string
+
+// MarshalJSON encodes the set as {"value": true, ...}, preserving slice order.
+// Duplicates are dropped, keeping the first occurrence, mirroring the server's
+// own push()-with-containment-check. A nil slice encodes as {}.
+func (s OrderedStringSet) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	seen := make(map[string]struct{}, len(s))
+	for _, v := range s {
+		if _, dup := seen[v]; dup {
+			continue
+		}
+		seen[v] = struct{}{}
+		if len(seen) > 1 {
+			buf.WriteByte(',')
+		}
+		key, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ordered string set: %w", err)
+		}
+		buf.Write(key)
+		buf.WriteString(":true")
+	}
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
+}
+
+// UnmarshalJSON accepts the object form {"value": true, ...} and, defensively,
+// a JSON array of strings. Object keys are returned in document order rather
+// than sorted, which is what makes the round-trip order-preserving.
+func (s *OrderedStringSet) UnmarshalJSON(data []byte) error {
+	if len(data) > 0 && data[0] == '[' {
+		var arr []string
+		if err := json.Unmarshal(data, &arr); err != nil {
+			return err
+		}
+		*s = arr
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	tok, err := dec.Token()
+	if err != nil {
+		return fmt.Errorf("decoding ordered string set: %w", err)
+	}
+	if delim, ok := tok.(json.Delim); !ok || delim != '{' {
+		return fmt.Errorf("decoding ordered string set: expected object, got %v", tok)
+	}
+	out := make([]string, 0, 4)
+	for dec.More() {
+		keyTok, err := dec.Token()
+		if err != nil {
+			return fmt.Errorf("decoding ordered string set: %w", err)
+		}
+		key, ok := keyTok.(string)
+		if !ok {
+			return fmt.Errorf("decoding ordered string set: non-string key %v", keyTok)
+		}
+		// The value is always true on the wire; decode and discard it so the
+		// decoder advances to the next key.
+		var discard json.RawMessage
+		if err := dec.Decode(&discard); err != nil {
+			return fmt.Errorf("decoding ordered string set: %w", err)
+		}
+		out = append(out, key)
+	}
 	*s = out
 	return nil
 }

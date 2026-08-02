@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -47,7 +48,7 @@ type domainResourceModel struct {
 	DirectoryID             types.String `tfsdk:"directory_id"`
 	CertificateManagement   types.String `tfsdk:"certificate_management"`
 	AcmeProviderID          types.String `tfsdk:"acme_provider_id"`
-	SubjectAlternativeNames types.Set    `tfsdk:"subject_alternative_names"`
+	SubjectAlternativeNames types.List   `tfsdk:"subject_alternative_names"`
 	DkimManagement          types.String `tfsdk:"dkim_management"`
 	DNSManagement           types.String `tfsdk:"dns_management"`
 	DNSServerID             types.String `tfsdk:"dns_server_id"`
@@ -125,13 +126,16 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Optional:    true,
 				Description: "ACME provider id used when `certificate_management` is `Automatic`.",
 			},
-			"subject_alternative_names": schema.SetAttribute{
+			"subject_alternative_names": schema.ListAttribute{
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "Additional subject alternative names (SANs) to include in the TLS certificate " +
-					"when `certificate_management` is `Automatic`.",
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+					"when `certificate_management` is `Automatic`. Entries are bare hostnames, to which the " +
+					"domain is appended (e.g. `mail`), or names used as-is when they contain a dot (e.g. " +
+					"`example.org`, `*.example.org`). **Order is significant:** the first entry becomes the " +
+					"issued certificate's Subject Common Name, so list the primary hostname first.",
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"dkim_management": schema.StringAttribute{
 				Optional:    true,
@@ -212,12 +216,12 @@ func (r *domainResource) toAPI(ctx context.Context, m *domainResourceModel, diag
 
 // certManagementRef builds a TypedRef for the certificate management field,
 // attaching the ACME provider id and any extra SANs when mode is Automatic.
-func certManagementRef(ctx context.Context, kind string, acmeProviderID types.String, sans types.Set, diags *fwDiags) *client.TypedRef {
+func certManagementRef(ctx context.Context, kind string, acmeProviderID types.String, sans types.List, diags *fwDiags) *client.TypedRef {
 	ref := &client.TypedRef{Type: kind}
 	if kind == "Automatic" {
 		ref.AcmeProviderID = strPtr(acmeProviderID)
-		if s := stringSetSlice(ctx, sans, diags); s != nil {
-			ref.SubjectAlternativeNames = stringSetPtr(s)
+		if s := stringListSlice(ctx, sans, diags); s != nil {
+			ref.SubjectAlternativeNames = orderedStringSetPtr(s)
 		}
 	}
 	return ref
@@ -260,13 +264,13 @@ func (r *domainResource) fromAPI(m *domainResourceModel, d *client.Domain, diags
 	if d.CertificateManagement != nil {
 		m.CertificateManagement = types.StringValue(d.CertificateManagement.Type)
 		m.AcmeProviderID = strValue(d.CertificateManagement.AcmeProviderID)
-		sans, d2 := stringSetValue(deref(d.CertificateManagement.SubjectAlternativeNames))
+		sans, d2 := stringListValueOrEmpty(deref(d.CertificateManagement.SubjectAlternativeNames))
 		diags.Append(d2...)
 		m.SubjectAlternativeNames = sans
 	} else {
-		emptySet, d2 := stringSetValue(nil)
+		emptyList, d2 := stringListValueOrEmpty(nil)
 		diags.Append(d2...)
-		m.SubjectAlternativeNames = emptySet
+		m.SubjectAlternativeNames = emptyList
 	}
 	if d.DNSManagement != nil {
 		m.DNSManagement = types.StringValue(d.DNSManagement.Type)
