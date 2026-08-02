@@ -20,6 +20,27 @@ resource "stalwart_domain" "example" {
   aliases     = ["example.net"]
 }
 
+# Automatic certificate management, using an ACME provider and DNS server
+# defined elsewhere. Automatic DNS management is required alongside an ACME
+# provider: the DNS-01 challenge is answered by publishing records into the
+# domain's own zone, so Stalwart must be able to write them.
+#
+# The order of subject_alternative_names is significant: the first entry becomes
+# the issued certificate's Subject Common Name, so list the hostname clients
+# connect to first. Bare hostnames have the domain appended; entries containing
+# a dot are used as-is.
+resource "stalwart_domain" "managed_certificate" {
+  name     = "example.org"
+  catchall = "postmaster@example.org"
+
+  certificate_management    = "Automatic"
+  acme_provider_id          = stalwart_acme_provider.example.id
+  subject_alternative_names = ["mail", "autoconfig", "autodiscover"]
+
+  dns_management = "Automatic"
+  dns_server_id  = stalwart_dns_server.example.id
+}
+
 # Import an existing domain by its name:
 # terraform import stalwart_domain.example example.com
 ```
@@ -48,7 +69,7 @@ resource "stalwart_domain" "example" {
 - `publish_records` (Set of String) Set of DNS record types the server should automatically publish when `dns_management` is `Automatic`. Valid values: `dkim`, `tlsa`, `spf`, `mx`, `dmarc`, `srv`, `mtaSts`, `tlsRpt`, `caa`, `autoConfig`, `autoConfigLegacy`, `autoDiscover`.
 - `report_address` (String) Address to receive DMARC, TLS-RPT and CAA reports for this domain (maps to `reportAddressUri`). Defaults to `mailto:postmaster`.
 - `subaddressing` (String) Sub-addressing (plus addressing) mode: `Enabled` or `Disabled`. Defaults to `Enabled`.
-- `subject_alternative_names` (Set of String) Additional subject alternative names (SANs) to include in the TLS certificate when `certificate_management` is `Automatic`.
+- `subject_alternative_names` (List of String) Additional subject alternative names (SANs) to include in the TLS certificate when `certificate_management` is `Automatic`. Entries are bare hostnames, to which the domain is appended (e.g. `mail`), or names used as-is when they contain a dot (e.g. `example.org`, `*.example.org`). **Order is significant:** the first entry becomes the issued certificate's Subject Common Name, so list the primary hostname first.
 
 ### Read-Only
 

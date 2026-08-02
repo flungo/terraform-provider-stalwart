@@ -92,12 +92,22 @@ A set keyed by the value, each mapped to `true`.
 
 VERIFIED: `crates/registry/src/types/map.rs:222` (`map.serialize_entry(&item.as_string(), &true)`).
 
-Used by: Domain `aliases`; Account/Group `memberGroupIds`; MailingList `recipients`; Role `roleIds`/`enabledPermissions`/`disabledPermissions`; DkimSignature `headers`; nested `roles.roleIds`, permission lists.
+Used by: Domain `aliases`; Account/Group `memberGroupIds`; MailingList `recipients`; Role `roleIds`/`enabledPermissions`/`disabledPermissions`; DkimSignature `headers`; nested `roles.roleIds`, permission lists; Domain `certificateManagement.subjectAlternativeNames`.
 
-In Go: modelled as `StringSet` (`internal/client/collections.go`).
-Marshals empty as `{}` (required-present on create).
+**`Map<T>` is ordered.** It is a `Vec<T>` behind the object encoding: `push()` appends after a containment check, nothing sorts, and deserialization pushes keys in document order.
+So element order round-trips through the server intact rather than being normalised.
 
-**Model as `types.Set` in Terraform schema** — the server returns `Map<T>` fields in canonical (sorted) order, so `types.List` would produce "inconsistent result after apply" whenever config order differs from server order.
+In Go: modelled as `StringSet` or `OrderedStringSet` (`internal/client/collections.go`), both marshalling empty as `{}` (required-present on create).
+Pick between them by whether the *server* acts on order:
+
+- **`StringSet` + `types.Set`** — the default. For fields where order carries no meaning (aliases, permissions, recipients), set semantics avoid spurious diffs when the server returns members in a different order than config lists them. `StringSet` marshals via a Go map and sorts on unmarshal, so order is deliberately discarded in both directions.
+- **`OrderedStringSet` + `types.List`** — for the rare field whose order the server acts on. Today that is `certificateManagement.subjectAlternativeNames`: Stalwart builds the ACME order from it in order and submits an empty Subject, so the first entry becomes the issued certificate's Subject Common Name.
+
+> **Do not marshal an order-significant field through `map[string]bool`.**
+> `encoding/json` sorts map keys, so the order reaching the server is always alphabetical regardless of config — silently changing which hostname a certificate is issued for.
+> This is why `OrderedStringSet` builds its JSON object explicitly.
+
+See [ADR 003](decisions/003-ordered-map-collections.md) for the full rationale, including why set semantics remain the default.
 
 ### `List<T>` → `{"0": item, "1": item, ...}`
 

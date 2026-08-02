@@ -42,13 +42,17 @@ const (
 // PublishRecords is the dnsManagement.Automatic variant's set of DNS record
 // types to publish. Stalwart models it as Map<DnsRecordType>, encoded on the
 // wire as the same {"<value>": true} object form as StringSet — not a bool.
+//
+// SubjectAlternativeNames uses OrderedStringSet rather than StringSet: its
+// first element becomes the issued certificate's Subject Common Name, so the
+// practitioner's order has to survive the round-trip.
 type TypedRef struct {
-	Type                    string     `json:"@type"`
-	AcmeProviderID          *string    `json:"acmeProviderId,omitempty"`
-	DNSServerID             *string    `json:"dnsServerId,omitempty"`
-	PublishRecords          *StringSet `json:"publishRecords,omitempty"`
-	Origin                  *string    `json:"origin,omitempty"`
-	SubjectAlternativeNames *StringSet `json:"subjectAlternativeNames,omitempty"`
+	Type                    string            `json:"@type"`
+	AcmeProviderID          *string           `json:"acmeProviderId,omitempty"`
+	DNSServerID             *string           `json:"dnsServerId,omitempty"`
+	PublishRecords          *StringSet        `json:"publishRecords,omitempty"`
+	Origin                  *string           `json:"origin,omitempty"`
+	SubjectAlternativeNames *OrderedStringSet `json:"subjectAlternativeNames,omitempty"`
 }
 
 // Domain models the Stalwart Domain object.

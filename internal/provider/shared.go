@@ -220,6 +220,19 @@ func stringSetSlice(ctx context.Context, set types.Set, diags *diag.Diagnostics)
 	return out
 }
 
+// stringListSlice converts a Terraform list of strings to a Go slice. A null or
+// unknown list yields a nil slice. Used for collection properties whose order
+// the server preserves and acts on (see client.OrderedStringSet), which are
+// modelled as `types.List` so that config order is significant.
+func stringListSlice(ctx context.Context, list types.List, diags *diag.Diagnostics) []string {
+	if list.IsNull() || list.IsUnknown() {
+		return nil
+	}
+	var out []string
+	diags.Append(list.ElementsAs(ctx, &out, false)...)
+	return out
+}
+
 // stringListValue converts a Go slice to a Terraform list of strings, mapping a
 // nil slice to a null list.
 func stringListValue(slice []string) (types.List, diag.Diagnostics) {
@@ -249,6 +262,27 @@ func stringSetValue(slice []string) (types.Set, diag.Diagnostics) {
 // yields a pointer to an empty set.
 func stringSetPtr(s []string) *client.StringSet {
 	set := client.StringSet(s)
+	return &set
+}
+
+// stringListValueOrEmpty converts a Go slice to a Terraform list of strings,
+// mapping a nil slice to an empty list rather than a null one. It is the
+// list-typed counterpart to stringSetValue and exists for the same reason:
+// Optional+Computed attributes must stay non-null so a config specifying `[]`
+// and a server returning no items agree, avoiding "inconsistent result after
+// apply". stringListValue keeps its null-for-nil behaviour for data sources.
+func stringListValueOrEmpty(slice []string) (types.List, diag.Diagnostics) {
+	if slice == nil {
+		slice = []string{}
+	}
+	return types.ListValueFrom(context.Background(), types.StringType, slice)
+}
+
+// orderedStringSetPtr returns a pointer to a client.OrderedStringSet built from
+// s, always non-nil so the field is present on the wire (Stalwart requires
+// collection properties to be sent as an object, using {} for "no items").
+func orderedStringSetPtr(s []string) *client.OrderedStringSet {
+	set := client.OrderedStringSet(s)
 	return &set
 }
 
