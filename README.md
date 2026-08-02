@@ -32,12 +32,12 @@ provider "stalwart" {
 
 The provider authenticates with **either** a bearer token **or** a username/password pair:
 
-| Setting    | Environment variable  | Notes                                          |
+| Setting | Environment variable | Notes |
 | ---------- | --------------------- | ---------------------------------------------- |
-| `endpoint` | `STALWART_ENDPOINT`   | Base URL of the server. The provider appends `/jmap`. |
-| `token`    | `STALWART_TOKEN`      | Bearer token. Takes precedence over username/password. |
-| `username` | `STALWART_USERNAME`   | HTTP Basic auth username.                       |
-| `password` | `STALWART_PASSWORD`   | HTTP Basic auth password.                       |
+| `endpoint` | `STALWART_ENDPOINT` | Base URL of the server. The provider appends `/jmap`. |
+| `token` | `STALWART_TOKEN` | Bearer token. Takes precedence over username/password. |
+| `username` | `STALWART_USERNAME` | HTTP Basic auth username. |
+| `password` | `STALWART_PASSWORD` | HTTP Basic auth password. |
 
 Explicit configuration takes precedence over environment variables.
 Provide a `token`, or a `username`/`password` pair — not both.
@@ -46,21 +46,21 @@ Provide a `token`, or a `username`/`password` pair — not both.
 
 ### Resources
 
-| Resource                    | Stalwart object | Notes |
+| Resource | Stalwart object | Notes |
 | --------------------------- | --------------- | ----- |
-| `stalwart_domain`           | `Domain`        | Email domain, DKIM/DNS/TLS management modes, catch-all, aliases. |
-| `stalwart_dkim_signature`   | `DkimSignature` | DKIM signing key (`ed25519-sha256` or `rsa-sha256`). |
-| `stalwart_account`          | `Account` (`@type: User`)  | Individual account: quota, roles, group membership. |
-| `stalwart_group`            | `Account` (`@type: Group`) | Group account. Membership is set from the account side. |
-| `stalwart_mailing_list`     | `MailingList`   | Mailing list with recipient addresses. |
-| `stalwart_role`             | `Role`          | A named set of permissions. |
+| `stalwart_domain` | `Domain` | Email domain, DKIM/DNS/TLS management modes, catch-all, aliases. |
+| `stalwart_dkim_signature` | `DkimSignature` | DKIM signing key (`ed25519-sha256` or `rsa-sha256`). |
+| `stalwart_account` | `Account` (`@type: User`) | Individual account: quota, roles, group membership. |
+| `stalwart_group` | `Account` (`@type: Group`) | Group account. Membership is set from the account side. |
+| `stalwart_mailing_list` | `MailingList` | Mailing list with recipient addresses. |
+| `stalwart_role` | `Role` | A named set of permissions. |
 
 ### Data sources
 
-| Data source                 | Description |
+| Data source | Description |
 | --------------------------- | ----------- |
-| `data.stalwart_domain`      | Reads a domain by name. |
-| `data.stalwart_account`     | Reads an account (user or group) by email address. |
+| `data.stalwart_domain` | Reads a domain by name. |
+| `data.stalwart_account` | Reads an account (user or group) by email address. |
 | `data.stalwart_dns_records` | Reads the DNS record recommendations (`dnsZoneFile`) for a domain. |
 
 ### Referencing a domain
@@ -80,14 +80,14 @@ Exactly one of `domain_id` or `domain` must be set.
 
 ### Importing
 
-| Resource                  | Import ID            | Example |
+| Resource | Import ID | Example |
 | ------------------------- | -------------------- | ------- |
-| `stalwart_domain`         | domain name          | `terraform import stalwart_domain.example example.com` |
-| `stalwart_account`        | email address        | `terraform import stalwart_account.alice alice@example.com` |
-| `stalwart_group`          | email address        | `terraform import stalwart_group.team team@example.com` |
-| `stalwart_mailing_list`   | email address        | `terraform import stalwart_mailing_list.announce announce@example.com` |
-| `stalwart_role`           | description          | `terraform import stalwart_role.support "Support team role"` |
-| `stalwart_dkim_signature` | opaque id            | `terraform import stalwart_dkim_signature.example itxnfyrwaaaa` |
+| `stalwart_domain` | domain name | `terraform import stalwart_domain.example example.com` |
+| `stalwart_account` | email address | `terraform import stalwart_account.alice alice@example.com` |
+| `stalwart_group` | email address | `terraform import stalwart_group.team team@example.com` |
+| `stalwart_mailing_list` | email address | `terraform import stalwart_mailing_list.announce announce@example.com` |
+| `stalwart_role` | description | `terraform import stalwart_role.support "Support team role"` |
+| `stalwart_dkim_signature` | opaque id | `terraform import stalwart_dkim_signature.example itxnfyrwaaaa` |
 
 Each of these also accepts the object's opaque id directly.
 
