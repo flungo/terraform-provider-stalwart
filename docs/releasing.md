@@ -10,7 +10,7 @@ Both registries require every provider release to include a GPG signature over t
 The release workflow reads two repository secrets:
 
 | Secret | How to obtain |
-|---|---|
+| --- | --- |
 | `GPG_PRIVATE_KEY` | `gpg --armor --export-secret-keys <fingerprint>` |
 | `PASSPHRASE` | The passphrase for the key |
 
@@ -35,7 +35,7 @@ No further one-time setup is required.
 ## Versioning scheme
 
 | Phase | Version range | When to use |
-|---|---|---|
+| --- | --- | --- |
 | Active v0 development | `v0.x.y` | While the Stalwart instance migration to Terraform is in progress |
 | First stable release | `v1.0.0` | Once the migration is complete and the provider API is considered stable |
 

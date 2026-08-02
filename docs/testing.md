@@ -56,7 +56,7 @@ See [decisions/001-test-methodology.md](decisions/001-test-methodology.md) for t
 ### Test helpers
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `acc_helpers_test.go` | `accClient` construction, HCL list rendering |
 | `acc_checks_test.go` | Per-type server fetch + field assertion helpers (`wantStr`, `wantBool`, `wantSet`, `wantQuota`, ...) |
 
