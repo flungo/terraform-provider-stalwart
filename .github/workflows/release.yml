@@ -19,10 +19,10 @@ on:
         type: string
 
 jobs:
-  release:
+  terraform-provider-release:
     permissions:
       contents: write
-    uses: flungo/github-workflows/.github/workflows/terraform-provider-release.yml@v1
+    uses: flungo/github-workflows/.github/workflows/terraform-provider-release.yml@v2
     with:
       version: ${{ inputs.version }}
     secrets:
