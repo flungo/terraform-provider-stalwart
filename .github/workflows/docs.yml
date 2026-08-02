@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  docs:
+  terraform-provider-docs:
     permissions:
       contents: write
-    uses: flungo/github-workflows/.github/workflows/terraform-provider-docs.yml@v1
+    uses: flungo/github-workflows/.github/workflows/terraform-provider-docs.yml@v2

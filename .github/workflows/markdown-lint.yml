@@ -22,5 +22,5 @@ on:
       - ".github/workflows/markdown-lint.yml"
 
 jobs:
-  lint:
-    uses: flungo/github-workflows/.github/workflows/markdown-lint.yml@v1
+  markdown-lint:
+    uses: flungo/github-workflows/.github/workflows/markdown-lint.yml@v2

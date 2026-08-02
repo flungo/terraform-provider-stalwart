@@ -3,8 +3,8 @@
 #
 # Opt-in check that flags this repo (via an issue in its own repo) if a future
 # flungo/github-workflows major bump ever leaves it pinning a frozen @vN. No
-# credential needed. See flungo/github-workflows docs/runbooks/adopting-version-check.md.
-name: github-workflows version check
+# credential needed. See flungo/github-workflows docs/runbooks/adopting-flungo-workflows.md.
+name: flungo/github-workflows
 
 on:
   schedule:
@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  version-check:
+  flungo-workflows:
     permissions:
       contents: read
       issues: write
-    uses: flungo/github-workflows/.github/workflows/version-check.yml@v1
+    uses: flungo/github-workflows/.github/workflows/flungo-workflows.yml@v2

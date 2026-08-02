@@ -20,8 +20,8 @@ jobs:
   # Build/vet, lint, unit tests, and the docs-in-sync check, from the shared
   # provider CI. The provider name (stalwart) is derived from the repo name by
   # the shared workflow.
-  ci:
-    uses: flungo/github-workflows/.github/workflows/terraform-provider-test.yml@v1
+  terraform-provider-test:
+    uses: flungo/github-workflows/.github/workflows/terraform-provider-test.yml@v2
 
   # Acceptance tests boot a throwaway Stalwart container via the in-process
   # harness (internal/acctest). GitHub-hosted runners ship with Docker and can
