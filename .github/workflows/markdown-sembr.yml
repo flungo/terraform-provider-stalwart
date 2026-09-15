@@ -1,0 +1,20 @@
+# Caller for the reusable semantic-line-break check in flungo/github-workflows.
+# Flags two sentences sharing a source line — the one MUST rule of sembr.org.
+# See that repo's docs/runbooks/adopting-markdown-workflows.md.
+#
+# Unfiltered, like the other two Markdown callers here: a path filter would stop
+# the check run being created at all on a PR touching no Markdown, which rules
+# out ever requiring the context.
+#
+# No `ignore:` — the check inherits `ignores` from .markdownlint-cli2.jsonc, so
+# the two scan the same files without the exclusion being maintained twice.
+name: Markdown semantic line breaks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  markdown-sembr:
+    uses: flungo/github-workflows/.github/workflows/markdown-sembr.yml@v2
