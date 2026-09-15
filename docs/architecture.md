@@ -34,8 +34,12 @@ The `internal/client` package is intentionally minimal — it does not generate 
 Its responsibilities are:
 
 - **Transport**: `POST /jmap` with Basic or Bearer authentication.
-- **Encoding**: `StringSet` and `OrderedStringSet` (Go representations of `Map<T>`) and `IndexList[T]` (Go representation of `List<T>`). All marshal to empty `{}` when empty, which is required on create. `OrderedStringSet` preserves element order for the fields whose order the server acts on. See [stalwart-api.md](stalwart-api.md#collection-encoding) for the wire format and how to choose between the two.
-- **Id detection**: `client.IsID(s)` returns true when `s` is in the Stalwart base32 alphabet (`abcdefghijklmnopqrstuvwxyz792013`). Used during import and domain ref resolution.
+- **Encoding**: `StringSet` and `OrderedStringSet` (Go representations of `Map<T>`) and `IndexList[T]` (Go representation of `List<T>`).
+  All marshal to empty `{}` when empty, which is required on create.
+  `OrderedStringSet` preserves element order for the fields whose order the server acts on.
+  See [stalwart-api.md](stalwart-api.md#collection-encoding) for the wire format and how to choose between the two.
+- **Id detection**: `client.IsID(s)` returns true when `s` is in the Stalwart base32 alphabet (`abcdefghijklmnopqrstuvwxyz792013`).
+  Used during import and domain ref resolution.
 - **Typed JMAP helpers**: `Get[T]`, `Set[T]`, `Query[T]` — generic wrappers that handle the JMAP envelope and decode typed responses.
 
 The client does **not** use the Stalwart CLI (`stalwart-cli`).
@@ -45,15 +49,21 @@ The CLI is not bundled in the server Docker image and is a separate versioned bi
 
 Each resource follows this structure:
 
-1. **Schema**: Attributes mirror the Stalwart object's JSON fields. Fields that the server defaults or always returns are `Optional + Computed` with `UseStateForUnknown`. `Map<T>`-backed fields use `types.Set`, except where the server acts on element order, which use `types.List`; `List<T>`-backed fields use `types.List`. Duration fields accept a friendly string (`90d`, `1h`, `500ms`) and convert to/from milliseconds.
+1. **Schema**: Attributes mirror the Stalwart object's JSON fields.
+   Fields that the server defaults or always returns are `Optional + Computed` with `UseStateForUnknown`.
+   `Map<T>`-backed fields use `types.Set`, except where the server acts on element order, which use `types.List`; `List<T>`-backed fields use `types.List`.
+   Duration fields accept a friendly string (`90d`, `1h`, `500ms`) and convert to/from milliseconds.
 
-2. **Create / Update**: Build the Go struct, call `client.Set` with a `create` or `update` map. For create, the server assigns the id.
+2. **Create / Update**: Build the Go struct, call `client.Set` with a `create` or `update` map.
+   For create, the server assigns the id.
 
-3. **Read**: Call `client.Get` by id, map the response back to Terraform state. All reads go through the provider's own read path — acceptance tests use a *separate* client to verify the server state independently.
+3. **Read**: Call `client.Get` by id, map the response back to Terraform state.
+   All reads go through the provider's own read path — acceptance tests use a *separate* client to verify the server state independently.
 
 4. **Delete**: Call `client.Set` with a `destroy` list containing the id.
 
-5. **Import**: Accept either an opaque id (recognized by `client.IsID`) or a human-friendly reference (name, email, description). Human refs use `x:Type/query` to resolve to the id before importing.
+5. **Import**: Accept either an opaque id (recognized by `client.IsID`) or a human-friendly reference (name, email, description).
+   Human refs use `x:Type/query` to resolve to the id before importing.
 
 ## Domain references
 

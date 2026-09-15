@@ -14,7 +14,8 @@ An alternative approach considered was `stalwart-cli snapshot`: capture a JSON d
 Each acceptance test asserts field values **twice**:
 
 1. In Terraform state via `resource.TestCheckResourceAttr` — proves plan/apply/read round-trips correctly.
-2. On the server via a **direct JMAP client** (`accClient` in `acc_helpers_test.go`) built independently of the provider's read path. The `checkServer*` helpers in `acc_checks_test.go` fetch the object and assert exact field values.
+2. On the server via a **direct JMAP client** (`accClient` in `acc_helpers_test.go`) built independently of the provider's read path.
+   The `checkServer*` helpers in `acc_checks_test.go` fetch the object and assert exact field values.
 
 The direct client also verifies id linkages: a child object's `domainId`/`memberGroupIds`/`roleIds` on the server must equal the ids that Terraform state recorded for the referenced resources.
 
@@ -22,11 +23,14 @@ The direct client also verifies id linkages: a child object's `domainId`/`member
 
 `stalwart-cli snapshot` was considered and rejected for three reasons:
 
-1. **Extra dependency**: the CLI is not bundled in the `stalwartlabs/stalwart` Docker image. Using it in the harness requires installing a separate, version-matched binary.
+1. **Extra dependency**: the CLI is not bundled in the `stalwartlabs/stalwart` Docker image.
+   Using it in the harness requires installing a separate, version-matched binary.
 
-2. **Lossy by design**: snapshot strips secrets and server-set fields, masks values, and rewrites ids to client-refs (e.g. `#domain-b`). It cannot assert the exact value of any field.
+2. **Lossy by design**: snapshot strips secrets and server-set fields, masks values, and rewrites ids to client-refs (e.g. `#domain-b`).
+   It cannot assert the exact value of any field.
 
-3. **Wrong tool**: snapshot is designed for backup and migration, not per-field verification. The direct-client read gives a more precise "exactly these fields are as expected" guarantee.
+3. **Wrong tool**: snapshot is designed for backup and migration, not per-field verification.
+   The direct-client read gives a more precise "exactly these fields are as expected" guarantee.
 
 Revisit only if a future need (e.g. asserting the *absence* of unexpected objects across the whole server state) calls for a whole-state diff.
 

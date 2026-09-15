@@ -25,9 +25,11 @@ The GitHub raw API rate-limits unauthenticated requests — prefer a shallow `gi
 **The endpoint is `/jmap`, not `/api`.**
 
 - `crates/http/src/request.rs` routes `"jmap" =>` (POST, empty next segment) to `handle_jmap_request` (~line 83).
-- `"api" =>` routes to a separate `handle_api_request` (~line 403) — a small HTTP API for auth, schema, and telemetry. It is NOT the management API.
+- `"api" =>` routes to a separate `handle_api_request` (~line 403) — a small HTTP API for auth, schema, and telemetry.
+  It is NOT the management API.
 - Empirically confirmed: `POST /api` → **404**, `POST /jmap` → **200** on a live v0.16 container.
-- The generated `ref/object/*.md` curl snippets show `POST .../api` and are **wrong**. The hand-written `http/index.md` and `development/api.md` are correct.
+- The generated `ref/object/*.md` curl snippets show `POST .../api` and are **wrong**.
+  The hand-written `http/index.md` and `development/api.md` are correct.
 
 ## Capability URN
 
@@ -51,7 +53,8 @@ Singletons use the literal id `"singleton"`.
 Objects are keyed by an **opaque server-generated id** (`id` field).
 Child objects reference their parent via a field like `domainId` — the parent's id, not its name.
 
-**The id is NOT a ULID.** It is a `u64` rendered in a custom base32 alphabet:
+**The id is NOT a ULID.**
+It is a `u64` rendered in a custom base32 alphabet:
 
 ```text
 abcdefghijklmnopqrstuvwxyz792013
@@ -82,7 +85,8 @@ The `data.stalwart_dns_records` data source reads that field.
 
 ## Collection encoding
 
-**Collection-valued properties are JSON objects, not arrays.** Sending an array is rejected with `invalidPatch: Invalid value for object property`.
+**Collection-valued properties are JSON objects, not arrays.**
+Sending an array is rejected with `invalidPatch: Invalid value for object property`.
 
 Two encodings are used, verified in the Rust serializers:
 
@@ -94,14 +98,18 @@ VERIFIED: `crates/registry/src/types/map.rs:222` (`map.serialize_entry(&item.as_
 
 Used by: Domain `aliases`; Account/Group `memberGroupIds`; MailingList `recipients`; Role `roleIds`/`enabledPermissions`/`disabledPermissions`; DkimSignature `headers`; nested `roles.roleIds`, permission lists; Domain `certificateManagement.subjectAlternativeNames`.
 
-**`Map<T>` is ordered.** It is a `Vec<T>` behind the object encoding: `push()` appends after a containment check, nothing sorts, and deserialization pushes keys in document order.
+**`Map<T>` is ordered.**
+It is a `Vec<T>` behind the object encoding: `push()` appends after a containment check, nothing sorts, and deserialization pushes keys in document order.
 So element order round-trips through the server intact rather than being normalised.
 
 In Go: modelled as `StringSet` or `OrderedStringSet` (`internal/client/collections.go`), both marshalling empty as `{}` (required-present on create).
 Pick between them by whether the *server* acts on order:
 
-- **`StringSet` + `types.Set`** — the default. For fields where order carries no meaning (aliases, permissions, recipients), set semantics avoid spurious diffs when the server returns members in a different order than config lists them. `StringSet` marshals via a Go map and sorts on unmarshal, so order is deliberately discarded in both directions.
-- **`OrderedStringSet` + `types.List`** — for the rare field whose order the server acts on. Today that is `certificateManagement.subjectAlternativeNames`: Stalwart builds the ACME order from it in order and submits an empty Subject, so the first entry becomes the issued certificate's Subject Common Name.
+- **`StringSet` + `types.Set`** — the default.
+  For fields where order carries no meaning (aliases, permissions, recipients), set semantics avoid spurious diffs when the server returns members in a different order than config lists them.
+  `StringSet` marshals via a Go map and sorts on unmarshal, so order is deliberately discarded in both directions.
+- **`OrderedStringSet` + `types.List`** — for the rare field whose order the server acts on.
+  Today that is `certificateManagement.subjectAlternativeNames`: Stalwart builds the ACME order from it in order and submits an empty Subject, so the first entry becomes the issued certificate's Subject Common Name.
 
 > **Do not marshal an order-significant field through `map[string]bool`.**
 > `encoding/json` sorts map keys, so the order reaching the server is always alphabetical regardless of config — silently changing which hostname a certificate is issued for.
@@ -144,7 +152,8 @@ Such attributes use `Optional + Computed` with a `UseStateForUnknown` plan modif
 
 ## Password strength
 
-**Account passwords are strength-checked with zxcvbn.** A weak password is rejected at create/update:
+**Account passwords are strength-checked with zxcvbn.**
+A weak password is rejected at create/update:
 
 ```text
 invalidProperties: Password is too weak ... (properties: [secret])
@@ -155,7 +164,8 @@ Acceptance tests use an uncommon multi-word passphrase.
 
 ## Domain name validation
 
-**Domain names must have a recognised TLD.** `is_valid_domain` (`crates/utils/src/lib.rs:356`) accepts a name only if its TLD is in the public suffix list or is one of: `test`, `localhost`, `local`, `internal`.
+**Domain names must have a recognised TLD.**
+`is_valid_domain` (`crates/utils/src/lib.rs:356`) accepts a name only if its TLD is in the public suffix list or is one of: `test`, `localhost`, `local`, `internal`.
 
 `.example` is rejected (`invalidPatch: Invalid domain name`).
 Acceptance tests use `*.test`.

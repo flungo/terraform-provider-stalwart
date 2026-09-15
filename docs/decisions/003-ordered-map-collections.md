@@ -36,8 +36,11 @@ Set semantics remain the default deliberately: they avoid spurious diffs when th
 
 ## Consequences
 
-- `subject_alternative_names` is a list, so a reorder alone plans an update. This is a breaking schema change; HCL list literals parse unchanged and existing state decodes without a migration, since set and list both encode as JSON arrays in state.
-- The schema version is deliberately **not** bumped and no state upgrader is provided: the transformation is a no-op, so an upgrader would have nothing to do. The first plan after upgrading may show a reorder diff, which is the intended correction rather than a migration artifact.
-- Adding a `Map<T>`-backed field requires deciding which category it falls into. Getting it wrong is silent in both directions: a set where order matters corrupts the value, a list where it does not produces perpetual diffs.
+- `subject_alternative_names` is a list, so a reorder alone plans an update.
+  This is a breaking schema change; HCL list literals parse unchanged and existing state decodes without a migration, since set and list both encode as JSON arrays in state.
+- The schema version is deliberately **not** bumped and no state upgrader is provided: the transformation is a no-op, so an upgrader would have nothing to do.
+  The first plan after upgrading may show a reorder diff, which is the intended correction rather than a migration artifact.
+- Adding a `Map<T>`-backed field requires deciding which category it falls into.
+  Getting it wrong is silent in both directions: a set where order matters corrupts the value, a list where it does not produces perpetual diffs.
 - `TestOrderedStringSetVsStringSet` pins the behavioural difference between the two types so a refactor collapsing them fails loudly rather than quietly reintroducing the sort.
 - Any future field whose order the server acts on must not be marshalled through `map[string]bool`, regardless of how convenient it looks.
