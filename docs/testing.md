@@ -32,8 +32,7 @@ The harness starts Stalwart in **recovery mode**, which exposes the full JMAP ma
 - `STALWART_RECOVERY_MODE=1` — disables background/mail services, serves only the management API.
 - `STALWART_RECOVERY_ADMIN=admin:<password>` — pins a deterministic admin credential.
 - `STALWART_RECOVERY_MODE_PORT` (default `8080`) — the HTTP management port.
-- A minimal `config.json` is written containing only the DataStore object:
-  `{"@type":"RocksDb","path":"/var/lib/stalwart/"}`.
+- A minimal `config.json` is written containing only the DataStore object: `{"@type":"RocksDb","path":"/var/lib/stalwart/"}`.
 
 The management API is reachable at `http://<host>:8080/jmap`.
 
@@ -68,7 +67,8 @@ It tests against a matrix of Stalwart versions (currently `["v0.16"]`).
 Coverage is enforced at a minimum floor (currently 68%).
 The CI job uploads a coverage report artifact and posts a comment on PRs when coverage changes.
 
-**In the Claude Code web environment, run acceptance tests via CI, not locally.** The environment cannot pull the Stalwart container image due to network restrictions.
+**In the Claude Code web environment, run acceptance tests via CI, not locally.**
+The environment cannot pull the Stalwart container image due to network restrictions.
 See [decisions/002-ci-over-local.md](decisions/002-ci-over-local.md) for details and how to check whether the restriction has been lifted.
 
 ## Linting and formatting

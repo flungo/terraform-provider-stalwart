@@ -7,7 +7,8 @@ Detailed reference lives in [`docs/`](docs/README.md) — read it when implement
 
 - Terraform provider on the **Plugin Framework** (not the legacy SDK).
 - Targets **Stalwart v0.16+**, which exposes all configuration as JMAP objects (no REST management API).
-- `internal/client/` — minimal JMAP client. `internal/provider/` — resources and data sources.
+- `internal/client/` — minimal JMAP client.
+  `internal/provider/` — resources and data sources.
 - See [docs/architecture.md](docs/architecture.md) for package layout and design patterns.
 
 ## Branch management
@@ -34,7 +35,8 @@ Read the diff and any updated docs or decision records to understand what new fa
 Then:
 
 - If the upstream changes affect work already done on the branch, apply the necessary adjustments (via rebase amend — see below).
-- If anything is unclear, contradicts the goal of the current session, or conflicts with a decision already made on the branch, **stop and ask the user to confirm the direction** before proceeding. Do not silently resolve ambiguous conflicts by picking one interpretation.
+- If anything is unclear, contradicts the goal of the current session, or conflicts with a decision already made on the branch, **stop and ask the user to confirm the direction** before proceeding.
+  Do not silently resolve ambiguous conflicts by picking one interpretation.
 
 **Commit message convention — Conventional Commits:**
 
@@ -61,7 +63,8 @@ All branches land on `main` via either squash or rebase, never `git merge`.
 
 **Squash vs rebase when merging to main:**
 
-- **Squash** when the branch is a single logical change, regardless of how many working commits it took to get there (e.g. one resource added, one doc fix, one ADR written). The squashed commit message should describe the change, not the journey.
+- **Squash** when the branch is a single logical change, regardless of how many working commits it took to get there (e.g. one resource added, one doc fix, one ADR written).
+  The squashed commit message should describe the change, not the journey.
 - **Rebase** (fast-forward, no squash) when the branch contains multiple distinct logical changes that are worth preserving individually in the history (e.g. separate commits for a new resource, schema tests, and a runbook update).
 
 When in doubt, squash — a clean single commit is easier to revert and easier to read in `git log`.
@@ -77,14 +80,23 @@ This applies both when correcting work in response to upstream changes on `main`
 Full reference: [docs/stalwart-api.md](docs/stalwart-api.md).
 The most common traps:
 
-- **JMAP endpoint is `/jmap`**, not `/api`. The generated `ref/object/*.md` curl snippets are wrong.
+- **JMAP endpoint is `/jmap`**, not `/api`.
+  The generated `ref/object/*.md` curl snippets are wrong.
 - **Wire method names carry `x:` prefix**: `x:Domain/get`, `x:Account/set`, etc.
-- **Collections are JSON objects, not arrays.** `Map<T>` → `{"value": true}`. `List<T>` → `{"0": item, "1": item}` (use `types.List`).
-- **`Map<T>` is order-preserving** (a `Vec<T>` server-side). Model it as `types.Set` + `StringSet` unless the server acts on element order, in which case use `types.List` + `OrderedStringSet` — never `map[string]bool`, which `encoding/json` sorts.
+- **Collections are JSON objects, not arrays.**
+  `Map<T>` → `{"value": true}`.
+  `List<T>` → `{"0": item, "1": item}` (use `types.List`).
+- **`Map<T>` is order-preserving** (a `Vec<T>` server-side).
+  Model it as `types.Set` + `StringSet` unless the server acts on element order, in which case use `types.List` + `OrderedStringSet` — never `map[string]bool`, which `encoding/json` sorts.
 - **Server defaults and always-returns collections** → attributes must be `Optional + Computed` with `UseStateForUnknown`.
-- **Duration fields are `u64` milliseconds** on the wire. The provider converts from/to friendly strings (`90d`, `1h`, `500ms`).
-- **Domain names need a recognised TLD.** Use `*.test` in acceptance tests, not `*.example`.
-- **ACME contact addresses need a real public suffix, and `.test` is not one.** Creating a `stalwart_acme_provider` is not inert — Stalwart registers an ACME account immediately and the CA validates the contact. Let's Encrypt rejects `.test` ("no valid public suffix") *and* the `example.*` documentation domains ("forbidden domain"), so acceptance tests use `stalwart-tf-acc.net` against the staging directory. This is also why published examples that create one are excluded from the applied-examples test.
+- **Duration fields are `u64` milliseconds** on the wire.
+  The provider converts from/to friendly strings (`90d`, `1h`, `500ms`).
+- **Domain names need a recognised TLD.**
+  Use `*.test` in acceptance tests, not `*.example`.
+- **ACME contact addresses need a real public suffix, and `.test` is not one.**
+  Creating a `stalwart_acme_provider` is not inert — Stalwart registers an ACME account immediately and the CA validates the contact.
+  Let's Encrypt rejects `.test` ("no valid public suffix") *and* the `example.*` documentation domains ("forbidden domain"), so acceptance tests use `stalwart-tf-acc.net` against the staging directory.
+  This is also why published examples that create one are excluded from the applied-examples test.
 
 ## Source verification
 
@@ -106,7 +118,8 @@ Key paths in `stalwart-src`:
 
 ## Acceptance tests — CI only (web environment)
 
-**Do not attempt to run acceptance tests locally in the Claude Code web environment.** Container image pulls are blocked by network restrictions.
+**Do not attempt to run acceptance tests locally in the Claude Code web environment.**
+Container image pulls are blocked by network restrictions.
 Push to the feature branch and iterate against the CI `testacc` job in GitHub Actions.
 
 See [docs/decisions/002-ci-over-local.md](docs/decisions/002-ci-over-local.md) for the full context and instructions for checking whether the restriction has been lifted.
@@ -119,7 +132,9 @@ Terraform Registry docs live in `docs/` (generated by `tfplugindocs` from schema
 
 1. Add or update the example file in `examples/resources/<name>/resource.tf` (or `data-sources/<name>/data-source.tf`).
 2. Add or update `examples/resources/<name>/import.sh` for resources that support import.
-3. **Regenerate docs.** In the web environment you cannot install Terraform locally, so push the branch — the `docs` CI workflow installs Terraform, regenerates the docs, and commits the generated output back to the branch automatically. If Terraform is available locally, run `make generate` before pushing.
+3. **Regenerate docs.**
+   In the web environment you cannot install Terraform locally, so push the branch — the `docs` CI workflow installs Terraform, regenerates the docs, and commits the generated output back to the branch automatically.
+   If Terraform is available locally, run `make generate` before pushing.
 
 **Documentation structure:**
 
@@ -138,12 +153,9 @@ The generated docs (`docs/index.md`, `docs/resources/`, `docs/data-sources/`) ar
 
 To reproduce CI locally, match the pinned tool versions:
 
-- markdownlint-cli2 **0.17.2** (markdownlint 0.37.4) — the version bundled by
-  `DavidAnson/markdownlint-cli2-action@v19`. Install it with
-  `npm install markdownlint-cli2@0.17.2`, then run `markdownlint-cli2 '**/*.md'`.
-- lychee for the offline link and anchor check (the action bundles its own):
-  `cargo install lychee --locked`, then
-  `lychee --offline --include-fragments --no-progress '**/*.md'`.
+- markdownlint-cli2 **0.17.2** (markdownlint 0.37.4) — the version bundled by `DavidAnson/markdownlint-cli2-action@v19`.
+  Install it with `npm install markdownlint-cli2@0.17.2`, then run `markdownlint-cli2 '**/*.md'`.
+- lychee for the offline link and anchor check (the action bundles its own): `cargo install lychee --locked`, then `lychee --offline --include-fragments --no-progress '**/*.md'`.
 
 The prose and cross-reference conventions these rules pair with are not repeated here.
 Semantic line breaks (paired with `MD013` off) and the wider doc-tree standards come from the `docs-standards@flungo-plugins` plugin ([flungo/claude-plugins](https://github.com/flungo/claude-plugins)), enabled for this repo in [`.claude/settings.json`](.claude/settings.json).
@@ -161,6 +173,7 @@ make generate                                      # regenerate Registry docs (n
 
 ## Tooling gotchas
 
-- `.golangci.yml` uses **golangci-lint v2 config format** — requires v2.x. The `@v6` GitHub Action installs v1.x and fails with exit code 3.
+- `.golangci.yml` uses **golangci-lint v2 config format** — requires v2.x.
+  The `@v6` GitHub Action installs v1.x and fails with exit code 3.
 - The `errcheck` linter requires explicitly discarding deferred `Close()` errors: `defer func() { _ = x.Close() }()`.
 - Go toolchain auto-upgrades in this environment (`go.mod` shows `go 1.25.8`).

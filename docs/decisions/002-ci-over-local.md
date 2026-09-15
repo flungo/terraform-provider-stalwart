@@ -7,15 +7,19 @@
 The acceptance test harness requires pulling the `stalwartlabs/stalwart:v0.16` Docker image.
 In the Claude Code on the web environment, two separate network restrictions block this:
 
-1. **GHCR blob CDN blocked**: `pkg-containers.githubusercontent.com` returns `403` with `x-deny-reason: host_not_allowed`. A `*.githubusercontent.com` wildcard allowlist entry was added but a more specific deny rule shadows it — only an explicit entry for this exact host would fix it.
+1. **GHCR blob CDN blocked**: `pkg-containers.githubusercontent.com` returns `403` with `x-deny-reason: host_not_allowed`.
+   A `*.githubusercontent.com` wildcard allowlist entry was added but a more specific deny rule shadows it — only an explicit entry for this exact host would fix it.
 
-2. **Docker Hub rate limit**: `production.cloudfront.docker.com` (Docker Hub's blob CDN) was unblocked, but anonymous pulls from the shared egress IP hit Docker Hub's unauthenticated pull rate limit. Even `hello-world` fails. A `docker login` with a personal Docker Hub token would be needed.
+2. **Docker Hub rate limit**: `production.cloudfront.docker.com` (Docker Hub's blob CDN) was unblocked, but anonymous pulls from the shared egress IP hit Docker Hub's unauthenticated pull rate limit.
+   Even `hello-world` fails.
+   A `docker login` with a personal Docker Hub token would be needed.
 
 Additionally, `dockerd` does not persist across conversation turns and must be restarted manually each session.
 
 ## Decision
 
-**Rely on GitHub Actions for acceptance-test execution.** GitHub-hosted runners ship Docker and can pull public images without these restrictions.
+**Rely on GitHub Actions for acceptance-test execution.**
+GitHub-hosted runners ship Docker and can pull public images without these restrictions.
 The `testacc` job runs on every PR and push via `.github/workflows/test.yml`.
 The workflow to iterate is: push a fix, read the Actions job log, push another fix.
 
