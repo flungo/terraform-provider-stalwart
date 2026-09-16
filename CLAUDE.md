@@ -153,8 +153,9 @@ The generated docs (`docs/index.md`, `docs/resources/`, `docs/data-sources/`) ar
 
 To reproduce CI locally, match the pinned tool versions:
 
-- markdownlint-cli2 **0.17.2** (markdownlint 0.37.4) — the version bundled by `DavidAnson/markdownlint-cli2-action@v19`.
-  Install it with `npm install markdownlint-cli2@0.17.2`, then run `markdownlint-cli2 '**/*.md'`.
+- markdownlint-cli2 **0.23.2** (markdownlint 0.41.1) — the version bundled by `DavidAnson/markdownlint-cli2-action@v24`, which is what the shared `markdown-lint.yml@v2` this repo calls actually runs.
+  Install it with `npm install markdownlint-cli2@0.23.2`, then run `markdownlint-cli2 '**/*.md'`.
+  `@v24` is a moving major tag, so this pin drifts on its own: re-derive it from the action's own manifest at `https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2-action/v24/package.json` rather than trusting this line, and correct it here when it has moved.
 - lychee for the offline link and anchor check (the action bundles its own): `cargo install lychee --locked`, then `lychee --offline --include-fragments --no-progress '**/*.md'`.
 
 The prose and cross-reference conventions these rules pair with are not repeated here.
