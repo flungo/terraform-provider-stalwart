@@ -84,6 +84,7 @@ func (r *networkListenerResource) Schema(_ context.Context, _ resource.SchemaReq
 				Computed: true,
 				Default:  booldefault.StaticBool(false),
 				Description: "Whether TLS is negotiated immediately on connection (implicit TLS / SMTPS/IMAPS). " +
+					"Sent as `tlsImplicit` to Stalwart v0.16 and `implicitTls` to v1. " +
 					"Set to `true` for port 465 (SMTPS) and port 993 (IMAPS). Defaults to `false`.",
 			},
 			"override_proxy_trusted_networks": schema.SetAttribute{
@@ -102,7 +103,7 @@ func (r *networkListenerResource) toAPI(ctx context.Context, m *networkListenerR
 	l := &client.NetworkListener{
 		Name:        strPtr(m.Name),
 		Protocol:    strPtr(m.Protocol),
-		TLSImplicit: boolPtr(m.TLSImplicit),
+		ImplicitTLS: boolPtr(m.TLSImplicit),
 	}
 	l.Bind = stringSetPtr(stringSetSlice(ctx, m.Bind, diags))
 	if s := stringSetSlice(ctx, m.OverrideProxyTrustedNetworks, diags); s != nil {
@@ -116,7 +117,7 @@ func (r *networkListenerResource) fromAPI(m *networkListenerResourceModel, l *cl
 	m.ID = strValue(l.ID)
 	m.Name = strValue(l.Name)
 	m.Protocol = strValue(l.Protocol)
-	m.TLSImplicit = boolValue(l.TLSImplicit)
+	m.TLSImplicit = boolValue(l.ImplicitTLS)
 
 	bind, d := stringSetValue(deref(l.Bind))
 	diags.Append(d...)

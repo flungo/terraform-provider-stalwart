@@ -32,8 +32,8 @@ resource "stalwart_role" "support" {
 
 ### Optional
 
-- `disabled_permissions` (Set of String) Permissions explicitly disabled by this role; takes precedence over enabled permissions.
-- `enabled_permissions` (Set of String) Permissions explicitly enabled by this role.
+- `disabled_permissions` (Set of String) Permissions explicitly disabled by this role; takes precedence over enabled permissions. Names are the server's camelCase permission identifiers and are passed through unchanged. The set differs between Stalwart versions: v1 removed some v0.16 permissions (e.g. `jmapPrincipalCreate`, `oAuthClientRegistration`, `sysSpamLlmGet`) and added others (e.g. `sysOAuthGrantGet`, `sysSpamAiGet`), and the server rejects a name it does not know.
+- `enabled_permissions` (Set of String) Permissions explicitly enabled by this role. Names are the server's camelCase permission identifiers and are passed through unchanged. The set differs between Stalwart versions: v1 removed some v0.16 permissions (e.g. `jmapPrincipalCreate`, `oAuthClientRegistration`, `sysSpamLlmGet`) and added others (e.g. `sysOAuthGrantGet`, `sysSpamAiGet`), and the server rejects a name it does not know.
 - `extends` (Set of String) Ids of roles this role extends (maps to `roleIds`).
 
 ### Read-Only

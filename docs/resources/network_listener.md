@@ -42,7 +42,7 @@ resource "stalwart_network_listener" "imaps" {
 ### Optional
 
 - `override_proxy_trusted_networks` (Set of String) CIDR blocks trusted to send proxy-protocol headers for this listener, e.g. `["10.10.10.0/24"]`. Overrides the global proxy trusted network list.
-- `tls_implicit` (Boolean) Whether TLS is negotiated immediately on connection (implicit TLS / SMTPS/IMAPS). Set to `true` for port 465 (SMTPS) and port 993 (IMAPS). Defaults to `false`.
+- `tls_implicit` (Boolean) Whether TLS is negotiated immediately on connection (implicit TLS / SMTPS/IMAPS). Sent as `tlsImplicit` to Stalwart v0.16 and `implicitTls` to v1. Set to `true` for port 465 (SMTPS) and port 993 (IMAPS). Defaults to `false`.
 
 ### Read-Only
 

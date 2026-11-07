@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -15,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/flungo/terraform-provider-stalwart/internal/client"
@@ -24,6 +27,7 @@ var (
 	_ resource.Resource                = &acmeProviderResource{}
 	_ resource.ResourceWithConfigure   = &acmeProviderResource{}
 	_ resource.ResourceWithImportState = &acmeProviderResource{}
+	_ resource.ResourceWithModifyPlan  = &acmeProviderResource{}
 )
 
 // NewAcmeProviderResource is the constructor referenced by the provider.
@@ -42,6 +46,7 @@ type acmeProviderResourceModel struct {
 	Directory     types.String `tfsdk:"directory"`
 	RenewBefore   types.String `tfsdk:"renew_before"`
 	MaxRetries    types.Int64  `tfsdk:"max_retries"`
+	Description   types.String `tfsdk:"description"`
 
 	// Server-set after ACME account registration.
 	AccountKey types.String `tfsdk:"account_key"`
@@ -91,10 +96,22 @@ func (r *acmeProviderResource) Schema(_ context.Context, _ resource.SchemaReques
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"max_retries": schema.Int64Attribute{
-				Optional:      true,
-				Computed:      true,
-				Description:   "Maximum number of ACME challenge retries before giving up.",
+				Optional: true,
+				Computed: true,
+				Description: "Maximum number of ACME challenge retries before giving up. " +
+					"Stalwart v0.16 only: v1 removed the setting (retries are handled internally), " +
+					"so on a v1 server it reads as null and setting it is an error.",
 				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
+			"description": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Description: "Human-readable description of the ACME provider. " +
+					"Stalwart v1 requires one; when omitted the provider sets it to the `directory` URL on create. " +
+					"On v0.16 the server derives it from the directory URL and ACME account, " +
+					"so it is read-only there and setting it is an error.",
+				Validators:    []validator.String{stringvalidator.LengthAtLeast(1)},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"account_key": schema.StringAttribute{
 				Computed:      true,
@@ -111,7 +128,33 @@ func (r *acmeProviderResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *acmeProviderResource) toAPI(ctx context.Context, m *acmeProviderResourceModel, diags *fwDiags) *client.AcmeProvider {
+// versionedAttrs lists the attributes that exist on only one server version.
+func (m *acmeProviderResourceModel) versionedAttrs() []versionedAttr {
+	return []versionedAttr{
+		{name: "max_retries", value: m.MaxRetries, only: client.Version016,
+			hint: "Stalwart v1 removed the setting; ACME retries are handled internally."},
+		{name: "description", value: m.Description, only: client.Version1,
+			hint: "Stalwart v0.16 derives the description from the directory URL and ACME account."},
+	}
+}
+
+// ModifyPlan rejects attributes the server's version does not support.
+func (r *acmeProviderResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	var cfg acmeProviderResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	checkVersionedAttrs(ctx, r.client, cfg.versionedAttrs(), &resp.Diagnostics)
+}
+
+// toAPI builds the wire object from the plan. Version-specific properties are
+// sent only to the version that has them; the plan can carry a value from
+// state for them (Optional+Computed), which must not reach the other version.
+func (r *acmeProviderResource) toAPI(ctx context.Context, m *acmeProviderResourceModel, version client.ServerVersion, diags *fwDiags) *client.AcmeProvider {
 	p := &client.AcmeProvider{
 		ChallengeType: strPtr(m.ChallengeType),
 		Directory:     strPtr(m.Directory),
@@ -120,9 +163,18 @@ func (r *acmeProviderResource) toAPI(ctx context.Context, m *acmeProviderResourc
 	if s := strPtr(m.RenewBefore); s != nil {
 		p.RenewBefore = s
 	}
-	if !m.MaxRetries.IsNull() && !m.MaxRetries.IsUnknown() {
+	if version == client.Version016 && !m.MaxRetries.IsNull() && !m.MaxRetries.IsUnknown() {
 		v := m.MaxRetries.ValueInt64()
 		p.MaxRetries = &v
+	}
+	if version == client.Version1 {
+		// v1 rejects an empty description (AcmeProvider.validate in
+		// crates/registry/src/schema/structs_impl.rs). On create without one,
+		// default to the directory URL, the stem of v0.16's derived value.
+		p.Description = strPtr(m.Description)
+		if p.Description == nil || *p.Description == "" {
+			p.Description = strPtr(m.Directory)
+		}
 	}
 	return p
 }
@@ -138,6 +190,9 @@ func (r *acmeProviderResource) fromAPI(m *acmeProviderResourceModel, p *client.A
 	} else {
 		m.MaxRetries = types.Int64Null()
 	}
+	// v0.16 always returns its derived description; v1 returns the stored one,
+	// which defaults to empty.
+	m.Description = types.StringValue(deref(p.Description))
 	m.AccountKey = strValue(p.AccountKey)
 	m.AccountUri = strValue(p.AccountUri)
 
@@ -153,7 +208,7 @@ func (r *acmeProviderResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	body := r.toAPI(ctx, &plan, &resp.Diagnostics)
+	body := r.applyBody(ctx, req.Config, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -171,6 +226,22 @@ func (r *acmeProviderResource) Create(ctx context.Context, req resource.CreateRe
 	}
 	r.fromAPI(&plan, &created, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// applyBody re-checks the version-specific attributes against the now-known
+// configuration and builds the wire object for create or update.
+func (r *acmeProviderResource) applyBody(ctx context.Context, config tfsdk.Config, plan *acmeProviderResourceModel, diags *fwDiags) *client.AcmeProvider {
+	var cfg acmeProviderResourceModel
+	diags.Append(config.Get(ctx, &cfg)...)
+	if diags.HasError() {
+		return nil
+	}
+	checkVersionedAttrs(ctx, r.client, cfg.versionedAttrs(), diags)
+	version := serverVersion(ctx, r.client, diags)
+	if diags.HasError() {
+		return nil
+	}
+	return r.toAPI(ctx, plan, version, diags)
 }
 
 func (r *acmeProviderResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -205,7 +276,7 @@ func (r *acmeProviderResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	body := r.toAPI(ctx, &plan, &resp.Diagnostics)
+	body := r.applyBody(ctx, req.Config, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

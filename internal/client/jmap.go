@@ -107,6 +107,31 @@ type SetError struct {
 	Type        string   `json:"type"`
 	Description *string  `json:"description"`
 	Properties  []string `json:"properties"`
+
+	// ValidationErrors details a "validationFailed" error: one entry per
+	// property the server's schema validation rejected (Stalwart
+	// crates/registry/src/types/error.rs, ValidationError).
+	ValidationErrors []ValidationError `json:"validationErrors"`
+}
+
+// ValidationError is one schema validation failure, e.g.
+// {"type":"Required","property":"description"}.
+type ValidationError struct {
+	Type     string `json:"type"`
+	Property string `json:"property"`
+	Value    string `json:"value,omitempty"`
+	Required *int64 `json:"required,omitempty"`
+}
+
+func (v ValidationError) String() string {
+	s := v.Type + " " + v.Property
+	switch {
+	case v.Value != "":
+		s += fmt.Sprintf(" (%q)", v.Value)
+	case v.Required != nil:
+		s += fmt.Sprintf(" (limit %d)", *v.Required)
+	}
+	return s
 }
 
 func (e SetError) Error() string {
@@ -116,6 +141,9 @@ func (e SetError) Error() string {
 	}
 	if len(e.Properties) > 0 {
 		msg = fmt.Sprintf("%s (properties: %v)", msg, e.Properties)
+	}
+	if len(e.ValidationErrors) > 0 {
+		msg = fmt.Sprintf("%s (validation errors: %v)", msg, e.ValidationErrors)
 	}
 	return msg
 }

@@ -41,7 +41,7 @@ func TestAccNetworkListenerResource(t *testing.T) {
 						return firstErr(
 							wantStr("name", l.Name, "tf-acc-smtp"),
 							wantStr("protocol", l.Protocol, "smtp"),
-							wantBool("tlsImplicit", l.TLSImplicit, false),
+							wantBool("implicitTls", l.ImplicitTLS, false),
 							wantSet("bind", l.Bind, bindAddr),
 							wantSet("overrideProxyTrustedNetworks", l.OverrideProxyTrustedNetworks, "10.10.10.0/24"),
 						)
@@ -98,7 +98,7 @@ resource "stalwart_network_listener" "test" {
 					checkServerNetworkListener(c, resourceName, func(l client.NetworkListener) error {
 						return firstErr(
 							wantStr("name", l.Name, "tf-acc-smtps"),
-							wantBool("tlsImplicit", l.TLSImplicit, true),
+							wantBool("implicitTls", l.ImplicitTLS, true),
 							wantSet("bind", l.Bind, "0.0.0.0:12465"),
 						)
 					}),

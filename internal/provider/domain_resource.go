@@ -100,10 +100,11 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"enabled": schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(true),
-				Description: "Whether this domain is enabled. Defaults to `true`.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(true),
+				Description: "Whether this domain is enabled. Defaults to `true`. " +
+					"Sent as `isEnabled` to Stalwart v0.16 and `enable` to v1.",
 			},
 			"subaddressing": schema.StringAttribute{
 				Optional:    true,
@@ -201,7 +202,7 @@ func (r *domainResource) toAPI(ctx context.Context, m *domainResourceModel, diag
 		Name:                  strPtr(m.Name),
 		Description:           strPtr(m.Description),
 		CatchAllAddress:       strPtr(m.Catchall),
-		IsEnabled:             boolPtr(m.Enabled),
+		Enable:                boolPtr(m.Enabled),
 		AllowRelaying:         boolPtr(m.AllowRelaying),
 		ReportAddressURI:      strPtr(m.ReportAddress),
 		DirectoryID:           strPtr(m.DirectoryID),
@@ -248,7 +249,7 @@ func (r *domainResource) fromAPI(m *domainResourceModel, d *client.Domain, diags
 	m.Name = strValue(d.Name)
 	m.Description = strValue(d.Description)
 	m.Catchall = strValue(d.CatchAllAddress)
-	m.Enabled = boolValue(d.IsEnabled)
+	m.Enabled = boolValue(d.Enable)
 	m.AllowRelaying = boolValue(d.AllowRelaying)
 	m.ReportAddress = strValue(d.ReportAddressURI)
 	m.DirectoryID = strValue(d.DirectoryID)

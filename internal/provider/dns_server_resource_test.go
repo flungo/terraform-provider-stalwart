@@ -50,6 +50,7 @@ func TestAccDnsServerResourceTsig(t *testing.T) {
 							wantStr("keyName", srv.KeyName, "test.key."),
 							wantStr("protocol", srv.Protocol, "udp"),
 							wantStr("tsigAlgorithm", srv.TsigAlgorithm, "hmac-sha256"),
+							wantExpire("pollInterval", srv.PollInterval, 10_000),
 						)
 					}),
 				),

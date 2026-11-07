@@ -36,8 +36,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Stalwart versions to test against. Extend this list to widen coverage.
-        stalwart: ["v0.16"]
+        # Stalwart versions to test against: exact tags, one per supported
+        # schema generation (docs/decisions/004-dual-server-version-support.md).
+        # Bump each to the newest patch release of its series.
+        stalwart: ["v0.16.27", "v1.0.3"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -57,10 +59,10 @@ jobs:
             -coverprofile=coverage.out 2>&1 \
             | tee "${{ runner.temp }}/stalwart-logs/go-test.log"
       - name: Enforce coverage threshold
-        # Only gate on the primary version so the threshold lives in one place.
-        # Floor sits just below the current ~70% figure; ratchet upward as
-        # coverage improves (never down).
-        if: matrix.stalwart == 'v0.16'
+        # Only gate on the primary (newest) version so the threshold lives in one
+        # place. Floor sits just below the current ~70% figure; ratchet upward
+        # as coverage improves (never down).
+        if: matrix.stalwart == 'v1.0.3'
         run: ./scripts/coverage-check.sh coverage.out 68
       - name: Coverage report
         if: always()

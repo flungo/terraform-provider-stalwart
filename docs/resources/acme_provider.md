@@ -34,7 +34,8 @@ resource "stalwart_acme_provider" "letsencrypt" {
 
 ### Optional
 
-- `max_retries` (Number) Maximum number of ACME challenge retries before giving up.
+- `description` (String) Human-readable description of the ACME provider. Stalwart v1 requires one; when omitted the provider sets it to the `directory` URL on create. On v0.16 the server derives it from the directory URL and ACME account, so it is read-only there and setting it is an error.
+- `max_retries` (Number) Maximum number of ACME challenge retries before giving up. Stalwart v0.16 only: v1 removed the setting (retries are handled internally), so on a v1 server it reads as null and setting it is an error.
 - `renew_before` (String) Fraction of the certificate lifetime remaining when renewal is triggered: `R12` (1/2), `R23` (2/3), `R34` (3/4), or `R45` (4/5).
 
 ### Read-Only

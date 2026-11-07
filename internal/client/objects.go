@@ -4,8 +4,10 @@
 package client
 
 // This file models the subset of Stalwart management objects exposed by this
-// provider. Field names and JSON tags follow the Stalwart schema reference at
-// https://stalw.art/docs/ref/object/. Optional fields use pointers with
+// provider. Field names and JSON tags follow the Stalwart v1 schema; the few
+// properties v1 renamed are translated for v0.16 servers by the client (see
+// v016Renames in version.go), and properties that exist in only one version
+// are noted on the field. Optional fields use pointers with
 // "omitempty" so that partial updates only transmit the properties that are
 // being changed, and so that server-set fields are omitted from create/update
 // payloads.
@@ -61,7 +63,7 @@ type Domain struct {
 	Name                  *string    `json:"name,omitempty"`
 	Description           *string    `json:"description,omitempty"`
 	Aliases               *StringSet `json:"aliases,omitempty"`
-	IsEnabled             *bool      `json:"isEnabled,omitempty"`
+	Enable                *bool      `json:"enable,omitempty"` // "isEnabled" on v0.16
 	CatchAllAddress       *string    `json:"catchAllAddress,omitempty"`
 	AllowRelaying         *bool      `json:"allowRelaying,omitempty"`
 	ReportAddressURI      *string    `json:"reportAddressUri,omitempty"`
@@ -143,15 +145,6 @@ type DkimSignature struct {
 	CreatedAt *string `json:"createdAt,omitempty"`
 }
 
-// EmailAlias models an email alias attached to an account or mailing list.
-// Not yet surfaced as a managed attribute; reserved for future use.
-type EmailAlias struct {
-	Name        string  `json:"name"`
-	DomainID    string  `json:"domainId"`
-	Enabled     *bool   `json:"enabled,omitempty"`
-	Description *string `json:"description,omitempty"`
-}
-
 // MailingList models the Stalwart MailingList object.
 type MailingList struct {
 	ID           *string    `json:"id,omitempty"`
@@ -190,7 +183,7 @@ type DnsServer struct {
 	Secret             *SecretKey `json:"secret,omitempty"`
 	Timeout            *int64     `json:"timeout,omitempty"`
 	TTL                *int64     `json:"ttl,omitempty"`
-	PollingInterval    *int64     `json:"pollingInterval,omitempty"`
+	PollInterval       *int64     `json:"pollInterval,omitempty"` // "pollingInterval" on v0.16
 	PropagationTimeout *int64     `json:"propagationTimeout,omitempty"`
 	PropagationDelay   *int64     `json:"propagationDelay,omitempty"`
 
@@ -206,6 +199,10 @@ type DnsServer struct {
 // AcmeProvider models the Stalwart AcmeProvider object. ChallengeType selects
 // the ACME challenge method; RenewBefore is a fraction-of-lifetime enum.
 // AccountKey and AccountUri are server-set after ACME registration.
+//
+// MaxRetries exists only on v0.16 (removed in v1). Description is server-set
+// on v0.16 (derived from the directory and account URI) and an ordinary
+// stored property on v1.
 type AcmeProvider struct {
 	ID            *string    `json:"id,omitempty"`
 	ChallengeType *string    `json:"challengeType,omitempty"`
@@ -213,6 +210,7 @@ type AcmeProvider struct {
 	Directory     *string    `json:"directory,omitempty"`
 	RenewBefore   *string    `json:"renewBefore,omitempty"`
 	MaxRetries    *int64     `json:"maxRetries,omitempty"`
+	Description   *string    `json:"description,omitempty"`
 
 	// Server-set after ACME account registration.
 	AccountKey *string `json:"accountKey,omitempty"`
@@ -234,16 +232,27 @@ type Directory struct {
 	BindDN          *string    `json:"bindDn,omitempty"`
 	BindSecret      *SecretKey `json:"bindSecret,omitempty"`
 	FilterLogin     *string    `json:"filterLogin,omitempty"`
-	FilterMailbox   *string    `json:"filterMailbox,omitempty"`
+	FilterRecipient *string    `json:"filterRecipient,omitempty"` // "filterMailbox" on v0.16
 	AttrEmail       *StringSet `json:"attrEmail,omitempty"`
 	AttrMemberOf    *StringSet `json:"attrMemberOf,omitempty"`
 	AttrSecret      *StringSet `json:"attrSecret,omitempty"`
 	AttrDescription *StringSet `json:"attrDescription,omitempty"`
 
 	// OIDC variant fields.
-	IssuerURL     *string    `json:"issuerUrl,omitempty"`
-	ClaimUsername *string    `json:"claimUsername,omitempty"`
+	IssuerURL     *string `json:"issuerUrl,omitempty"`
+	ClaimUsername *string `json:"claimUsername,omitempty"`
+
+	// OIDC, v0.16 only (removed in v1).
 	RequireScopes *StringSet `json:"requireScopes,omitempty"`
+
+	// OIDC, v1 only.
+	AcceptedAudiences      *StringSet `json:"acceptedAudiences,omitempty"`
+	UnscopedTokens         *string    `json:"unscopedTokens,omitempty"`
+	OpaqueTokenValidation  *string    `json:"opaqueTokenValidation,omitempty"`
+	SkipAudienceValidation *bool      `json:"skipAudienceValidation,omitempty"`
+	AllowIDTokenClaims     *bool      `json:"allowIdTokenClaims,omitempty"`
+	LenientIssuerMatch     *bool      `json:"lenientIssuerMatch,omitempty"`
+	AllowInvalidCerts      *bool      `json:"allowInvalidCerts,omitempty"`
 }
 
 // NetworkListener models a Stalwart network listener (the "NetworkListener"
@@ -254,6 +263,6 @@ type NetworkListener struct {
 	Name                         *string    `json:"name,omitempty"`
 	Bind                         *StringSet `json:"bind,omitempty"`
 	Protocol                     *string    `json:"protocol,omitempty"`
-	TLSImplicit                  *bool      `json:"tlsImplicit,omitempty"`
+	ImplicitTLS                  *bool      `json:"implicitTls,omitempty"` // "tlsImplicit" on v0.16
 	OverrideProxyTrustedNetworks *StringSet `json:"overrideProxyTrustedNetworks,omitempty"`
 }

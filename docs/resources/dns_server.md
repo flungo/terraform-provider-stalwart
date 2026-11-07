@@ -3,12 +3,12 @@
 page_title: "stalwart_dns_server Resource - stalwart"
 subcategory: ""
 description: |-
-  Manages a Stalwart DNS server used for automatic DNS record management (the DnsServer JMAP object). Supports cloud providers (Cloudflare, DigitalOcean, etc.) via the secret field, and RFC 2136 TSIG via the host, port, key_name, key, protocol, and tsig_algorithm fields.
+  Manages a Stalwart DNS server used for automatic DNS record management (the DnsServer JMAP object). Supports cloud providers whose only credential is the secret property (Cloudflare, DigitalOcean, DeSEC, Hetzner, etc.) via the secret field, and RFC 2136 TSIG via the host, port, key_name, key, protocol, and tsig_algorithm fields.
 ---
 
 # stalwart_dns_server (Resource)
 
-Manages a Stalwart DNS server used for automatic DNS record management (the `DnsServer` JMAP object). Supports cloud providers (Cloudflare, DigitalOcean, etc.) via the `secret` field, and RFC 2136 TSIG via the `host`, `port`, `key_name`, `key`, `protocol`, and `tsig_algorithm` fields.
+Manages a Stalwart DNS server used for automatic DNS record management (the `DnsServer` JMAP object). Supports cloud providers whose only credential is the `secret` property (Cloudflare, DigitalOcean, DeSEC, Hetzner, etc.) via the `secret` field, and RFC 2136 TSIG via the `host`, `port`, `key_name`, `key`, `protocol`, and `tsig_algorithm` fields.
 
 ## Example Usage
 
@@ -45,7 +45,7 @@ resource "stalwart_dns_server" "cloudflare" {
 - `host` (String) IP address of the authoritative DNS server. Required for `Tsig` type.
 - `key` (String, Sensitive) Base64-encoded TSIG shared secret. Required for `Tsig` type. Write-only: the server never returns it, so out-of-band changes are not detected.
 - `key_name` (String) TSIG key name, e.g. `tsig-key.`. Required for `Tsig` type.
-- `polling_interval` (String) Interval between DNS propagation checks (e.g. `10s`). Uses Stalwart duration syntax.
+- `polling_interval` (String) Interval between DNS propagation checks (e.g. `10s`). Uses Stalwart duration syntax. Sent as `pollingInterval` to Stalwart v0.16 and `pollInterval` to v1.
 - `port` (Number) Port of the authoritative DNS server (default 53). Used by `Tsig` type.
 - `propagation_delay` (String) Initial delay before checking DNS propagation (e.g. `5s`). Uses Stalwart duration syntax.
 - `propagation_timeout` (String) Maximum time to wait for DNS propagation (e.g. `2m`). Uses Stalwart duration syntax.

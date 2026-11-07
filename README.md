@@ -2,13 +2,14 @@
 
 A [Terraform](https://www.terraform.io) provider for the [Stalwart](https://stalw.art) mail and collaboration server, built on the modern [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework).
 
-The provider targets **Stalwart v0.16 and later**, which removed the legacy REST management API and now exposes all configuration as [JMAP](https://jmap.io) objects through the JMAP endpoint at `/jmap` (negotiated via the `urn:stalwart:jmap` capability).
+The provider targets **Stalwart v0.16 and v1**, which removed the legacy REST management API and expose all configuration as [JMAP](https://jmap.io) objects through the JMAP endpoint at `/jmap` (negotiated via the `urn:stalwart:jmap` capability).
+One provider release works against both: it detects the server's version and adapts the few properties v1 renamed or removed, so the provider can be upgraded before a server is migrated from v0.16 to v1 (see [ADR 004](docs/decisions/004-dual-server-version-support.md)).
 See the [Stalwart schema reference](https://stalw.art/docs/ref/) for the underlying object definitions.
 
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- A Stalwart server running v0.16 or later
+- A Stalwart server running v0.16.x or v1.0.x
 - [Go](https://go.dev/dl/) >= 1.24 (to build the provider)
 
 ## Using the provider

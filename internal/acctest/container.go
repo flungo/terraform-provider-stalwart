@@ -26,9 +26,9 @@ import (
 
 const (
 	// DefaultImage is the Stalwart image used when STALWART_TEST_IMAGE is unset.
-	// Pinned to a minor series so the harness tracks a single API version; the
-	// env var allows testing against other versions (e.g. a future v0.17).
-	DefaultImage = "stalwartlabs/stalwart:v0.16"
+	// The provider supports v0.16 and v1; CI runs both through the env var
+	// (see the testacc matrix in .github/workflows/test.yml).
+	DefaultImage = "stalwartlabs/stalwart:v1.0.3"
 
 	// imageEnv overrides the image under test.
 	imageEnv = "STALWART_TEST_IMAGE"

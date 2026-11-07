@@ -3,7 +3,8 @@
 ## Overview
 
 This is a Terraform provider for [Stalwart Mail Server](https://stalw.art) built on the **Terraform Plugin Framework** (not the legacy SDK).
-It targets Stalwart v0.16+, which exposes all management configuration as JMAP objects — there is no REST management API.
+It targets Stalwart v0.16 and v1, which expose all management configuration as JMAP objects — there is no REST management API.
+Both versions are served by the same build; see [ADR 004](decisions/004-dual-server-version-support.md).
 
 ## Package layout
 
@@ -18,7 +19,8 @@ internal/
 │   ├── id.go          IsID — distinguishes opaque server ids from human refs
 │   ├── jmap.go        JMAP request/response envelope
 │   ├── methods.go     Get / Set / Query typed helpers
-│   └── objects.go     Go structs for each Stalwart object type
+│   ├── objects.go     Go structs for each Stalwart object type (v1 property names)
+│   └── version.go     Server version detection and the v0.16 rename table
 └── provider/     Terraform resources and data sources
     ├── provider.go    Provider registration, authentication configuration
     ├── shared.go      Shared schema helpers (domain_ref attribute, etc.)
@@ -41,6 +43,8 @@ Its responsibilities are:
 - **Id detection**: `client.IsID(s)` returns true when `s` is in the Stalwart base32 alphabet (`abcdefghijklmnopqrstuvwxyz792013`).
   Used during import and domain ref resolution.
 - **Typed JMAP helpers**: `Get[T]`, `Set[T]`, `Query[T]` — generic wrappers that handle the JMAP envelope and decode typed responses.
+- **Server versions**: `ServerVersion` detects v0.16 or v1 from `/api/schema` on first use.
+  Structs use the v1 property names; on a v0.16 server the client renames the few properties v1 renamed, in both directions.
 
 The client does **not** use the Stalwart CLI (`stalwart-cli`).
 The CLI is not bundled in the server Docker image and is a separate versioned binary.
@@ -64,6 +68,12 @@ Each resource follows this structure:
 
 5. **Import**: Accept either an opaque id (recognized by `client.IsID`) or a human-friendly reference (name, email, description).
    Human refs use `x:Type/query` to resolve to the id before importing.
+
+## Version-specific attributes
+
+An attribute whose property exists on only one server version is `Optional + Computed` and listed by the resource's `versionedAttrs()`.
+`ModifyPlan` calls `checkVersionedAttrs` (`versioned.go`) to reject it at plan time on the other version, and `toAPI` sends the property only to the version that has it.
+See [ADR 004](decisions/004-dual-server-version-support.md).
 
 ## Domain references
 

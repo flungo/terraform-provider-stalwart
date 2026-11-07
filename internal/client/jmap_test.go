@@ -71,7 +71,7 @@ func TestCallNegotiatesCapabilities(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, err := New(Config{Endpoint: srv.URL, Token: "secret"})
+	c, err := New(Config{Endpoint: srv.URL, Token: "secret", ServerVersion: Version1})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestMethodError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(Config{Endpoint: srv.URL, Token: "secret"})
+	c, _ := New(Config{Endpoint: srv.URL, Token: "secret", ServerVersion: Version1})
 	_, err := c.Get(context.Background(), TypeDomain, []string{"a"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -128,7 +128,7 @@ func TestHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(Config{Endpoint: srv.URL, Token: "secret"})
+	c, _ := New(Config{Endpoint: srv.URL, Token: "secret", ServerVersion: Version1})
 	_, err := c.Get(context.Background(), TypeDomain, []string{"a"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -157,5 +157,19 @@ func TestIsID(t *testing.T) {
 		if got := IsID(in); got != want {
 			t.Errorf("IsID(%q) = %v, want %v", in, got, want)
 		}
+	}
+}
+
+// TestSetErrorValidationErrors checks that the per-property details of a
+// "validationFailed" set error reach the error message.
+func TestSetErrorValidationErrors(t *testing.T) {
+	var e SetError
+	raw := `{"type":"validationFailed","validationErrors":[{"type":"Required","property":"description"},{"type":"MinLength","property":"name","required":3}]}`
+	if err := json.Unmarshal([]byte(raw), &e); err != nil {
+		t.Fatal(err)
+	}
+	const want = "validationFailed (validation errors: [Required description MinLength name (limit 3)])"
+	if got := e.Error(); got != want {
+		t.Fatalf("Error() = %q, want %q", got, want)
 	}
 }

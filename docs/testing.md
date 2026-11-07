@@ -22,8 +22,11 @@ The harness (`internal/acctest/`) starts a Stalwart container automatically — 
 
 ### Container image
 
-Default: `stalwartlabs/stalwart:v0.16`.
-Override with `STALWART_TEST_IMAGE` for version matrix testing.
+Default: `stalwartlabs/stalwart:v1.0.3`.
+Override with `STALWART_TEST_IMAGE`, e.g. `stalwartlabs/stalwart:v0.16.27`, to test the other supported version.
+
+Tests that differ by server version branch on `accServerVersion(t)` (see [ADR 004](decisions/004-dual-server-version-support.md)).
+`TestAccServerVersionDetection` fails if the detected version disagrees with the image tag, and `TestAccWireNames` checks the property names stored on the server through `accRawClient`, which never translates them.
 
 ### How the container is configured
 
@@ -56,15 +59,15 @@ See [decisions/001-test-methodology.md](decisions/001-test-methodology.md) for t
 
 | File | Purpose |
 | --- | --- |
-| `acc_helpers_test.go` | `accClient` construction, HCL list rendering |
+| `acc_helpers_test.go` | `accClient` / `accRawClient` construction, `accServerVersion`, HCL list rendering |
 | `acc_checks_test.go` | Per-type server fetch + field assertion helpers (`wantStr`, `wantBool`, `wantSet`, `wantQuota`, ...) |
 
 ## CI
 
 The `testacc` job runs on every PR and push to main via `.github/workflows/test.yml`.
-It tests against a matrix of Stalwart versions (currently `["v0.16"]`).
+It tests against a matrix of exact Stalwart tags, one per supported version (currently `["v0.16.27", "v1.0.3"]`).
 
-Coverage is enforced at a minimum floor (currently 68%).
+Coverage is enforced at a minimum floor (currently 68%), on the `v1.0.3` leg only.
 The CI job uploads a coverage report artifact and posts a comment on PRs when coverage changes.
 
 **In the Claude Code web environment, run acceptance tests via CI, not locally.**

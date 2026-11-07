@@ -32,6 +32,11 @@ func (c *Client) Get(ctx context.Context, objType string, ids []string) (*GetRes
 	if err := decodeResult(responses, &result); err != nil {
 		return nil, err
 	}
+	for i, raw := range result.List {
+		if result.List[i], err = c.fromWire(ctx, objType, raw); err != nil {
+			return nil, err
+		}
+	}
 	return &result, nil
 }
 
@@ -52,6 +57,10 @@ func (c *Client) GetOne(ctx context.Context, objType, id string, dst any) error 
 // created object's server-set properties are decoded into created if non-nil.
 func (c *Client) Create(ctx context.Context, objType string, obj any, created any) (string, error) {
 	const creationID = "new"
+	obj, err := c.toWire(ctx, objType, obj)
+	if err != nil {
+		return "", err
+	}
 	args := map[string]any{
 		"create": map[string]any{creationID: obj},
 	}
@@ -83,6 +92,9 @@ func (c *Client) Create(ctx context.Context, objType string, obj any, created an
 		return "", fmt.Errorf("creating %s: server returned an empty id", objType)
 	}
 	if created != nil {
+		if raw, err = c.fromWire(ctx, objType, raw); err != nil {
+			return "", err
+		}
 		if err := json.Unmarshal(raw, created); err != nil {
 			return "", fmt.Errorf("decoding created %s: %w", objType, err)
 		}
@@ -92,6 +104,10 @@ func (c *Client) Create(ctx context.Context, objType string, obj any, created an
 
 // Update applies a partial update (patch) to the object with the given id.
 func (c *Client) Update(ctx context.Context, objType, id string, patch any) error {
+	patch, err := c.toWire(ctx, objType, patch)
+	if err != nil {
+		return err
+	}
 	args := map[string]any{
 		"update": map[string]any{id: patch},
 	}

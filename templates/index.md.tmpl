@@ -7,9 +7,35 @@ description: |-
 # Stalwart Provider
 
 The Stalwart provider manages configuration of a [Stalwart](https://stalw.art) mail and
-collaboration server (v0.16+). It targets the server's JMAP management API to create,
+collaboration server (v0.16 or v1). It targets the server's JMAP management API to create,
 read, update, and delete domains, accounts, groups, mailing lists, DKIM signatures, and
 other objects.
+
+## Server versions
+
+The provider supports Stalwart v0.16.x and v1.0.x from the same release, so it can be
+upgraded before a server is migrated from v0.16 to v1. It detects the server's version
+from the server's `/api/schema` document the first time it needs to, and translates the
+properties v1 renamed (for example `Domain.isEnabled` became `enable`) without any change
+to attribute names. Set `server_version` (or `STALWART_SERVER_VERSION`) only when that
+endpoint is not reachable, for example behind a proxy that exposes only `/jmap`.
+
+A few attributes exist on only one version. Setting one against the other version is a
+plan-time error, and on that version it reads as null:
+
+| Resource | Attribute | Version |
+|----------|-----------|---------|
+| `stalwart_acme_provider` | `max_retries` | v0.16 only |
+| `stalwart_acme_provider` | `description` (settable) | v1 only (required there; defaults to the `directory` URL); read-only on v0.16 |
+| `stalwart_directory` | `require_scopes` | v0.16 only |
+| `stalwart_directory` | `accepted_audiences`, `unscoped_tokens`, `opaque_token_validation`, `skip_audience_validation`, `allow_id_token_claims`, `lenient_issuer_match`, `allow_invalid_certs` | v1 only |
+
+Before migrating a server to v1, remove `max_retries` and `require_scopes` from the
+configuration; while the server is still on v0.16 that is a no-op plan.
+
+Permission names used by `stalwart_role`, `stalwart_account` and `stalwart_group` are passed
+through unchanged. v1 removed some v0.16 permissions and added others, so check any custom
+permission lists against the new version.
 
 ## Example Usage
 
@@ -27,6 +53,7 @@ via environment variables.
 | `STALWART_TOKEN`     | Bearer token (preferred)                 |
 | `STALWART_USERNAME`  | Username for basic authentication        |
 | `STALWART_PASSWORD`  | Password for basic authentication        |
+| `STALWART_SERVER_VERSION` | Server version (`0.16` or `1`); skips detection |
 
 When both token and username/password are set, the token takes precedence.
 
