@@ -6,7 +6,8 @@ Detailed reference lives in [`docs/`](docs/README.md) — read it when implement
 ## Project shape
 
 - Terraform provider on the **Plugin Framework** (not the legacy SDK).
-- Targets **Stalwart v0.16+**, which exposes all configuration as JMAP objects (no REST management API).
+- Targets **Stalwart v0.16 and v1** from one build, which expose all configuration as JMAP objects (no REST management API).
+  See [ADR 004](docs/decisions/004-dual-server-version-support.md).
 - `internal/client/` — minimal JMAP client.
   `internal/provider/` — resources and data sources.
 - See [docs/architecture.md](docs/architecture.md) for package layout and design patterns.
@@ -97,6 +98,11 @@ The most common traps:
   Creating a `stalwart_acme_provider` is not inert — Stalwart registers an ACME account immediately and the CA validates the contact.
   Let's Encrypt rejects `.test` ("no valid public suffix") *and* the `example.*` documentation domains ("forbidden domain"), so acceptance tests use `stalwart-tf-acc.net` against the staging directory.
   This is also why published examples that create one are excluded from the applied-examples test.
+
+- **v0.16 and v1 differ in a few property names.**
+  Client structs use the v1 names; `v016Renames` in `internal/client/version.go` translates for v0.16.
+  A property that exists on only one version is a `versionedAttr`.
+  When adding a field, diff it in both schemas: `stalwart-migrate` ships them as `mapping/schema/v0.16.27.json.gz` and `v1.json.gz`, and `SCHEMA_CHANGES.md` there lists every change.
 
 ## Source verification
 

@@ -130,7 +130,7 @@ func (d *domainDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	data.Name = strValue(dom.Name)
 	data.Description = strValue(dom.Description)
 	data.Catchall = strValue(dom.CatchAllAddress)
-	data.Enabled = boolValue(dom.IsEnabled)
+	data.Enabled = boolValue(dom.Enable)
 	data.DirectoryID = strValue(dom.DirectoryID)
 	data.CreatedAt = strValue(dom.CreatedAt)
 	data.DNSZoneFile = strValue(dom.DNSZoneFile)

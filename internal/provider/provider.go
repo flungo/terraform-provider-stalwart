@@ -28,6 +28,7 @@ const (
 	envToken    = "STALWART_TOKEN"
 	envUsername = "STALWART_USERNAME"
 	envPassword = "STALWART_PASSWORD"
+	envVersion  = "STALWART_SERVER_VERSION"
 )
 
 // StalwartProvider is the provider implementation.
@@ -43,6 +44,7 @@ type StalwartProviderModel struct {
 	Token    types.String `tfsdk:"token"`
 	Username types.String `tfsdk:"username"`
 	Password types.String `tfsdk:"password"`
+	Version  types.String `tfsdk:"server_version"`
 }
 
 // New returns a function that constructs the provider for the given version.
@@ -59,7 +61,7 @@ func (p *StalwartProvider) Metadata(_ context.Context, _ provider.MetadataReques
 
 func (p *StalwartProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manage a Stalwart mail and collaboration server (v0.16+) through its JMAP management API.",
+		Description: "Manage a Stalwart mail and collaboration server (v0.16 or v1) through its JMAP management API.",
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
 				Optional: true,
@@ -83,6 +85,14 @@ func (p *StalwartProvider) Schema(_ context.Context, _ provider.SchemaRequest, r
 				Sensitive: true,
 				Description: "Password for HTTP Basic authentication (used with `username`). " +
 					"May also be set with the `" + envPassword + "` environment variable.",
+			},
+			"server_version": schema.StringAttribute{
+				Optional: true,
+				Description: "Schema generation of the Stalwart server: `0.16` or `1`. " +
+					"Normally omitted: the provider detects it from the server's `/api/schema` document " +
+					"the first time it needs to know. Set it only when that endpoint is not reachable " +
+					"(for example behind a proxy that exposes only `/jmap`). " +
+					"May also be set with the `" + envVersion + "` environment variable.",
 			},
 		},
 	}
@@ -112,6 +122,7 @@ func (p *StalwartProvider) Configure(ctx context.Context, req provider.Configure
 	token := firstNonEmpty(cfg.Token.ValueString(), os.Getenv(envToken))
 	username := firstNonEmpty(cfg.Username.ValueString(), os.Getenv(envUsername))
 	password := firstNonEmpty(cfg.Password.ValueString(), os.Getenv(envPassword))
+	versionStr := firstNonEmpty(cfg.Version.ValueString(), os.Getenv(envVersion))
 
 	if endpoint == "" {
 		resp.Diagnostics.AddAttributeError(path.Root("endpoint"),
@@ -124,16 +135,25 @@ func (p *StalwartProvider) Configure(ctx context.Context, req provider.Configure
 			"Provide either a `token` (or "+envToken+") or a `username`/`password` pair "+
 				"(or "+envUsername+"/"+envPassword+").")
 	}
+	var version client.ServerVersion
+	if versionStr != "" {
+		v, err := client.ParseServerVersion(versionStr)
+		if err != nil {
+			resp.Diagnostics.AddAttributeError(path.Root("server_version"), "Invalid Stalwart server version", err.Error())
+		}
+		version = v
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	c, err := client.New(client.Config{
-		Endpoint:  endpoint,
-		Token:     token,
-		Username:  username,
-		Password:  password,
-		UserAgent: "terraform-provider-stalwart/" + p.version,
+		Endpoint:      endpoint,
+		Token:         token,
+		Username:      username,
+		Password:      password,
+		UserAgent:     "terraform-provider-stalwart/" + p.version,
+		ServerVersion: version,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Stalwart client", err.Error())

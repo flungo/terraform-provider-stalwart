@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -49,17 +50,25 @@ type Config struct {
 
 	// UserAgent is sent with every request.
 	UserAgent string
+
+	// ServerVersion, when set, fixes the server's schema generation and skips
+	// detection. Leave it as VersionUnknown to detect it on first use.
+	ServerVersion ServerVersion
 }
 
 // Client is a JMAP client for the Stalwart management API.
 type Client struct {
-	endpoint   string
+	baseURL    string // server root, without a trailing slash
+	endpoint   string // baseURL + apiPath
 	httpClient *http.Client
 	userAgent  string
 
 	token    string
 	username string
 	password string
+
+	versionMu sync.Mutex
+	version   ServerVersion
 }
 
 // New constructs a Client from the given configuration.
@@ -78,7 +87,7 @@ func New(cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("password is required when a username is set")
 	}
 
-	endpoint := strings.TrimRight(cfg.Endpoint, "/") + apiPath
+	baseURL := strings.TrimRight(cfg.Endpoint, "/")
 
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
@@ -86,12 +95,14 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		endpoint:   endpoint,
+		baseURL:    baseURL,
+		endpoint:   baseURL + apiPath,
 		httpClient: httpClient,
 		userAgent:  cfg.UserAgent,
 		token:      cfg.Token,
 		username:   cfg.Username,
 		password:   cfg.Password,
+		version:    cfg.ServerVersion,
 	}, nil
 }
 
@@ -159,14 +170,7 @@ func (c *Client) call(ctx context.Context, invocations ...Invocation) ([]rawInvo
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "application/json")
-	if c.userAgent != "" {
-		httpReq.Header.Set("User-Agent", c.userAgent)
-	}
-	if c.token != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+c.token)
-	} else {
-		httpReq.SetBasicAuth(c.username, c.password)
-	}
+	c.authorize(httpReq)
 
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -219,4 +223,16 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// authorize sets the User-Agent and credentials on an outgoing request.
+func (c *Client) authorize(req *http.Request) {
+	if c.userAgent != "" {
+		req.Header.Set("User-Agent", c.userAgent)
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	} else {
+		req.SetBasicAuth(c.username, c.password)
+	}
 }

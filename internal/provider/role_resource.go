@@ -42,6 +42,13 @@ type roleResourceModel struct {
 	DisabledPermissions types.Set    `tfsdk:"disabled_permissions"`
 }
 
+// permissionVersionNote documents that the permission vocabulary is the
+// server's: names are passed through as given.
+const permissionVersionNote = "Names are the server's camelCase permission identifiers and are passed through unchanged. " +
+	"The set differs between Stalwart versions: v1 removed some v0.16 permissions " +
+	"(e.g. `jmapPrincipalCreate`, `oAuthClientRegistration`, `sysSpamLlmGet`) and added others " +
+	"(e.g. `sysOAuthGrantGet`, `sysSpamAiGet`), and the server rejects a name it does not know."
+
 func (r *roleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_role"
 }
@@ -74,14 +81,15 @@ func (r *roleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Optional:      true,
 				Computed:      true,
 				ElementType:   types.StringType,
-				Description:   "Permissions explicitly enabled by this role.",
+				Description:   "Permissions explicitly enabled by this role. " + permissionVersionNote,
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"disabled_permissions": schema.SetAttribute{
-				Optional:      true,
-				Computed:      true,
-				ElementType:   types.StringType,
-				Description:   "Permissions explicitly disabled by this role; takes precedence over enabled permissions.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Permissions explicitly disabled by this role; takes precedence over enabled permissions. " +
+					permissionVersionNote,
 				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 		},

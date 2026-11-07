@@ -65,7 +65,8 @@ func (r *dnsServerResource) Configure(_ context.Context, req resource.ConfigureR
 func (r *dnsServerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a Stalwart DNS server used for automatic DNS record management (the `DnsServer` JMAP object). " +
-			"Supports cloud providers (Cloudflare, DigitalOcean, etc.) via the `secret` field, " +
+			"Supports cloud providers whose only credential is the `secret` property " +
+			"(Cloudflare, DigitalOcean, DeSEC, Hetzner, etc.) via the `secret` field, " +
 			"and RFC 2136 TSIG via the `host`, `port`, `key_name`, `key`, `protocol`, and `tsig_algorithm` fields.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -103,9 +104,10 @@ func (r *dnsServerResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"polling_interval": schema.StringAttribute{
-				Optional:      true,
-				Computed:      true,
-				Description:   "Interval between DNS propagation checks (e.g. `10s`). Uses Stalwart duration syntax.",
+				Optional: true,
+				Computed: true,
+				Description: "Interval between DNS propagation checks (e.g. `10s`). Uses Stalwart duration syntax. " +
+					"Sent as `pollingInterval` to Stalwart v0.16 and `pollInterval` to v1.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"propagation_timeout": schema.StringAttribute{
@@ -208,7 +210,7 @@ func (r *dnsServerResource) toAPI(m *dnsServerResourceModel, diags *fwDiags) *cl
 			diags.AddError("Invalid polling_interval", err.Error())
 			return nil
 		}
-		srv.PollingInterval = &ms
+		srv.PollInterval = &ms
 	}
 	if s := strPtr(m.PropagationTimeout); s != nil {
 		ms, err := parseDuration(*s)
@@ -247,8 +249,8 @@ func (r *dnsServerResource) fromAPI(m *dnsServerResourceModel, srv *client.DnsSe
 	} else {
 		m.TTL = types.StringNull()
 	}
-	if srv.PollingInterval != nil {
-		m.PollingInterval = types.StringValue(formatDuration(*srv.PollingInterval))
+	if srv.PollInterval != nil {
+		m.PollingInterval = types.StringValue(formatDuration(*srv.PollInterval))
 	} else {
 		m.PollingInterval = types.StringNull()
 	}

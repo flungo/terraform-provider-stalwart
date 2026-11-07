@@ -56,3 +56,35 @@ func hclStringList(items []string) string {
 	}
 	return out + "]"
 }
+
+// accServerVersion returns the schema generation of the server under test, so
+// a test can pick the attributes and wire names that version has.
+func accServerVersion(t *testing.T) client.ServerVersion {
+	t.Helper()
+	v, err := accClient(t).ServerVersion(accCtx())
+	if err != nil {
+		t.Fatalf("detecting server version: %s", err)
+	}
+	return v
+}
+
+// accRawClient builds a verification client that never translates property
+// names: pinning it to v1 makes the v0.16 rename table a no-op, so a get
+// returns exactly the keys the server sent.
+func accRawClient(t *testing.T) *client.Client {
+	t.Helper()
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless TF_ACC is set")
+	}
+	c, err := client.New(client.Config{
+		Endpoint:      os.Getenv("STALWART_ENDPOINT"),
+		Token:         os.Getenv("STALWART_TOKEN"),
+		Username:      os.Getenv("STALWART_USERNAME"),
+		Password:      os.Getenv("STALWART_PASSWORD"),
+		ServerVersion: client.Version1,
+	})
+	if err != nil {
+		t.Fatalf("building raw verification client: %s", err)
+	}
+	return c
+}

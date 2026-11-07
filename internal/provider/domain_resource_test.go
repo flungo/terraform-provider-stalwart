@@ -52,7 +52,7 @@ func TestAccDomainResource(t *testing.T) {
 							wantStr("description", d.Description, "initial description"),
 							wantStr("catchAllAddress", d.CatchAllAddress, "postmaster@"+name),
 							wantSet("aliases", d.Aliases, "alias1."+name, "alias2."+name),
-							wantBool("isEnabled", d.IsEnabled, false),
+							wantBool("enable", d.Enable, false),
 							wantBool("allowRelaying", d.AllowRelaying, true),
 							wantStr("reportAddressUri", d.ReportAddressURI, "mailto:dmarc@"+name),
 							wantVariant("subAddressing", d.SubAddressing, "Disabled"),
@@ -84,7 +84,7 @@ func TestAccDomainResource(t *testing.T) {
 							wantStr("description", d.Description, "updated description"),
 							wantStr("catchAllAddress", d.CatchAllAddress, "hostmaster@"+name),
 							wantSet("aliases", d.Aliases, "alias3."+name),
-							wantBool("isEnabled", d.IsEnabled, true),
+							wantBool("enable", d.Enable, true),
 							wantBool("allowRelaying", d.AllowRelaying, false),
 						)
 					}),
@@ -116,7 +116,7 @@ func TestAccDomainResourceMinimal(t *testing.T) {
 					checkServerDomain(c, resourceName, func(d client.Domain) error {
 						return firstErr(
 							wantStr("reportAddressUri", d.ReportAddressURI, "mailto:postmaster"),
-							wantBool("isEnabled", d.IsEnabled, true),
+							wantBool("enable", d.Enable, true),
 							wantStrNil("description", d.Description),
 							wantStrNil("catchAllAddress", d.CatchAllAddress),
 							wantSet("aliases", d.Aliases),

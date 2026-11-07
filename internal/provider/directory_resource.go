@@ -8,12 +8,17 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/flungo/terraform-provider-stalwart/internal/client"
@@ -23,6 +28,7 @@ var (
 	_ resource.Resource                = &directoryResource{}
 	_ resource.ResourceWithConfigure   = &directoryResource{}
 	_ resource.ResourceWithImportState = &directoryResource{}
+	_ resource.ResourceWithModifyPlan  = &directoryResource{}
 )
 
 // NewDirectoryResource is the constructor referenced by the provider.
@@ -55,6 +61,15 @@ type directoryResourceModel struct {
 	IssuerURL     types.String `tfsdk:"issuer_url"`
 	ClaimUsername types.String `tfsdk:"claim_username"`
 	RequireScopes types.Set    `tfsdk:"require_scopes"`
+
+	// OIDC variant, Stalwart v1 only.
+	AcceptedAudiences      types.Set    `tfsdk:"accepted_audiences"`
+	UnscopedTokens         types.String `tfsdk:"unscoped_tokens"`
+	OpaqueTokenValidation  types.String `tfsdk:"opaque_token_validation"`
+	SkipAudienceValidation types.Bool   `tfsdk:"skip_audience_validation"`
+	AllowIDTokenClaims     types.Bool   `tfsdk:"allow_id_token_claims"`
+	LenientIssuerMatch     types.Bool   `tfsdk:"lenient_issuer_match"`
+	AllowInvalidCerts      types.Bool   `tfsdk:"allow_invalid_certs"`
 }
 
 func (r *directoryResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -110,8 +125,9 @@ func (r *directoryResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Description: "LDAP filter template for login lookups, e.g. `(&(objectClass=inetOrgPerson)(uid=?))`.",
 			},
 			"filter_mailbox": schema.StringAttribute{
-				Optional:    true,
-				Description: "LDAP filter template for mailbox lookups, e.g. `(&(objectClass=inetOrgPerson)(mail=?))`.",
+				Optional: true,
+				Description: "LDAP filter template for recipient (mailbox) lookups, e.g. `(&(objectClass=inetOrgPerson)(mail=?))`. " +
+					"Sent as `filterMailbox` to Stalwart v0.16 and `filterRecipient` to v1.",
 			},
 			"attr_email": schema.SetAttribute{
 				Optional:      true,
@@ -152,17 +168,124 @@ func (r *directoryResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Description: "OIDC claim that contains the username, e.g. `preferred_username`.",
 			},
 			"require_scopes": schema.SetAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "OIDC scopes a token must carry. Stalwart v0.16 only: v1 removed the setting " +
+					"(see `unscoped_tokens` and `accepted_audiences`), so on a v1 server it reads as empty " +
+					"and setting it is an error.",
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+
+			// OIDC attributes, Stalwart v1 only.
+			"accepted_audiences": schema.SetAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Values accepted in a token's `aud` claim besides the server's own resource identifiers, " +
+					"e.g. the client id the identity provider issues access tokens for. " +
+					"Stalwart v1 only: on a v0.16 server it reads as empty and setting it is an error.",
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			"unscoped_tokens": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Description: "How access tokens without any of the mail, contacts, calendars or files scopes are handled: " +
+					"`reject` (server default), `interoperable` or `full`. " + v1OnlyNote,
+				Validators:    []validator.String{stringvalidator.OneOf("reject", "interoperable", "full")},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"opaque_token_validation": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Description: "How access tokens that are not JWTs are validated: `none` (server default; rejects them), " +
+					"`userInfo` or `introspection`. " + v1OnlyNote,
+				Validators:    []validator.String{stringvalidator.OneOf("none", "userInfo", "introspection")},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"skip_audience_validation": schema.BoolAttribute{
 				Optional:      true,
 				Computed:      true,
-				ElementType:   types.StringType,
-				Description:   "OIDC scopes required for authentication.",
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Description:   "Accept access tokens whose `aud` claim is missing or matches none of the accepted audiences. " + v1OnlyNote,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			},
+			"allow_id_token_claims": schema.BoolAttribute{
+				Optional:      true,
+				Computed:      true,
+				Description:   "Accept JWT access tokens that carry ID token claims such as `nonce` or `at_hash`. " + v1OnlyNote,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			},
+			"lenient_issuer_match": schema.BoolAttribute{
+				Optional:      true,
+				Computed:      true,
+				Description:   "Ignore a trailing-slash difference between the configured and reported issuer. " + v1OnlyNote,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			},
+			"allow_invalid_certs": schema.BoolAttribute{
+				Optional:      true,
+				Computed:      true,
+				Description:   "Allow invalid TLS certificates when connecting to the OpenID Connect provider. " + v1OnlyNote,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}
 }
 
-func (r *directoryResource) toAPI(ctx context.Context, m *directoryResourceModel, diags *fwDiags) *client.Directory {
+// v1OnlyNote is appended to the description of OIDC attributes that only
+// Stalwart v1 has.
+const v1OnlyNote = "Stalwart v1 only: on a v0.16 server it reads as null and setting it is an error."
+
+// versionedAttrs lists the attributes that exist on only one server version.
+func (m *directoryResourceModel) versionedAttrs() []versionedAttr {
+	v1 := func(name string, v attr.Value) versionedAttr {
+		return versionedAttr{name: name, value: v, only: client.Version1}
+	}
+	return []versionedAttr{
+		{name: "require_scopes", value: m.RequireScopes, only: client.Version016,
+			hint: "Stalwart v1 removed required scopes; see `unscoped_tokens` and `accepted_audiences`."},
+		v1("accepted_audiences", m.AcceptedAudiences),
+		v1("unscoped_tokens", m.UnscopedTokens),
+		v1("opaque_token_validation", m.OpaqueTokenValidation),
+		v1("skip_audience_validation", m.SkipAudienceValidation),
+		v1("allow_id_token_claims", m.AllowIDTokenClaims),
+		v1("lenient_issuer_match", m.LenientIssuerMatch),
+		v1("allow_invalid_certs", m.AllowInvalidCerts),
+	}
+}
+
+// ModifyPlan rejects attributes the server's version does not support.
+func (r *directoryResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	var cfg directoryResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	checkVersionedAttrs(ctx, r.client, cfg.versionedAttrs(), &resp.Diagnostics)
+}
+
+// applyBody re-checks the version-specific attributes against the now-known
+// configuration and builds the wire object for create or update.
+func (r *directoryResource) applyBody(ctx context.Context, config tfsdk.Config, plan *directoryResourceModel, diags *fwDiags) *client.Directory {
+	var cfg directoryResourceModel
+	diags.Append(config.Get(ctx, &cfg)...)
+	if diags.HasError() {
+		return nil
+	}
+	checkVersionedAttrs(ctx, r.client, cfg.versionedAttrs(), diags)
+	version := serverVersion(ctx, r.client, diags)
+	if diags.HasError() {
+		return nil
+	}
+	return r.toAPI(ctx, plan, version, diags)
+}
+
+// toAPI builds the wire object from the plan. Version-specific properties are
+// sent only to the version that has them: the plan can carry a value from
+// state for them (Optional+Computed), which must not reach the other version.
+func (r *directoryResource) toAPI(ctx context.Context, m *directoryResourceModel, version client.ServerVersion, diags *fwDiags) *client.Directory {
 	typ := m.Type.ValueString()
 	d := &client.Directory{
 		Type:        &typ,
@@ -177,7 +300,7 @@ func (r *directoryResource) toAPI(ctx context.Context, m *directoryResourceModel
 			d.BindSecret = &client.SecretKey{Type: "Value", Secret: s}
 		}
 		d.FilterLogin = strPtr(m.FilterLogin)
-		d.FilterMailbox = strPtr(m.FilterMailbox)
+		d.FilterRecipient = strPtr(m.FilterMailbox)
 		if s := stringSetSlice(ctx, m.AttrEmail, diags); s != nil {
 			d.AttrEmail = stringSetPtr(s)
 		}
@@ -193,8 +316,21 @@ func (r *directoryResource) toAPI(ctx context.Context, m *directoryResourceModel
 	case "Oidc":
 		d.IssuerURL = strPtr(m.IssuerURL)
 		d.ClaimUsername = strPtr(m.ClaimUsername)
-		if s := stringSetSlice(ctx, m.RequireScopes, diags); s != nil {
-			d.RequireScopes = stringSetPtr(s)
+		switch version {
+		case client.Version016:
+			if s := stringSetSlice(ctx, m.RequireScopes, diags); s != nil {
+				d.RequireScopes = stringSetPtr(s)
+			}
+		case client.Version1:
+			if s := stringSetSlice(ctx, m.AcceptedAudiences, diags); s != nil {
+				d.AcceptedAudiences = stringSetPtr(s)
+			}
+			d.UnscopedTokens = strPtr(m.UnscopedTokens)
+			d.OpaqueTokenValidation = strPtr(m.OpaqueTokenValidation)
+			d.SkipAudienceValidation = boolPtr(m.SkipAudienceValidation)
+			d.AllowIDTokenClaims = boolPtr(m.AllowIDTokenClaims)
+			d.LenientIssuerMatch = boolPtr(m.LenientIssuerMatch)
+			d.AllowInvalidCerts = boolPtr(m.AllowInvalidCerts)
 		}
 	}
 	return d
@@ -226,6 +362,13 @@ func (r *directoryResource) fromAPI(m *directoryResourceModel, d *client.Directo
 	m.IssuerURL = types.StringNull()
 	m.ClaimUsername = types.StringNull()
 	m.RequireScopes = emptySet
+	m.AcceptedAudiences = emptySet
+	m.UnscopedTokens = types.StringNull()
+	m.OpaqueTokenValidation = types.StringNull()
+	m.SkipAudienceValidation = types.BoolNull()
+	m.AllowIDTokenClaims = types.BoolNull()
+	m.LenientIssuerMatch = types.BoolNull()
+	m.AllowInvalidCerts = types.BoolNull()
 
 	switch deref(d.Type) {
 	case "Ldap":
@@ -233,7 +376,7 @@ func (r *directoryResource) fromAPI(m *directoryResourceModel, d *client.Directo
 		m.BaseDN = strValue(d.BaseDN)
 		m.BindDN = strValue(d.BindDN)
 		m.FilterLogin = strValue(d.FilterLogin)
-		m.FilterMailbox = strValue(d.FilterMailbox)
+		m.FilterMailbox = strValue(d.FilterRecipient)
 		attrEmail, d2 := stringSetValue(deref(d.AttrEmail))
 		diags.Append(d2...)
 		m.AttrEmail = attrEmail
@@ -252,6 +395,16 @@ func (r *directoryResource) fromAPI(m *directoryResourceModel, d *client.Directo
 		scopes, d2 := stringSetValue(deref(d.RequireScopes))
 		diags.Append(d2...)
 		m.RequireScopes = scopes
+		// Absent on v0.16, so these stay null there.
+		audiences, d2 := stringSetValue(deref(d.AcceptedAudiences))
+		diags.Append(d2...)
+		m.AcceptedAudiences = audiences
+		m.UnscopedTokens = strValue(d.UnscopedTokens)
+		m.OpaqueTokenValidation = strValue(d.OpaqueTokenValidation)
+		m.SkipAudienceValidation = boolValue(d.SkipAudienceValidation)
+		m.AllowIDTokenClaims = boolValue(d.AllowIDTokenClaims)
+		m.LenientIssuerMatch = boolValue(d.LenientIssuerMatch)
+		m.AllowInvalidCerts = boolValue(d.AllowInvalidCerts)
 	}
 }
 
@@ -262,7 +415,7 @@ func (r *directoryResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	body := r.toAPI(ctx, &plan, &resp.Diagnostics)
+	body := r.applyBody(ctx, req.Config, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -314,7 +467,7 @@ func (r *directoryResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	body := r.toAPI(ctx, &plan, &resp.Diagnostics)
+	body := r.applyBody(ctx, req.Config, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

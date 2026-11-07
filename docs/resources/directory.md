@@ -49,6 +49,9 @@ resource "stalwart_directory" "ldap" {
 
 ### Optional
 
+- `accepted_audiences` (Set of String) Values accepted in a token's `aud` claim besides the server's own resource identifiers, e.g. the client id the identity provider issues access tokens for. Stalwart v1 only: on a v0.16 server it reads as empty and setting it is an error.
+- `allow_id_token_claims` (Boolean) Accept JWT access tokens that carry ID token claims such as `nonce` or `at_hash`. Stalwart v1 only: on a v0.16 server it reads as null and setting it is an error.
+- `allow_invalid_certs` (Boolean) Allow invalid TLS certificates when connecting to the OpenID Connect provider. Stalwart v1 only: on a v0.16 server it reads as null and setting it is an error.
 - `attr_description` (Set of String) LDAP attribute(s) containing a human-readable account description.
 - `attr_email` (Set of String) LDAP attribute(s) containing email addresses.
 - `attr_member_of` (Set of String) LDAP attribute(s) listing group memberships (`attrMemberOf` on the wire).
@@ -58,9 +61,13 @@ resource "stalwart_directory" "ldap" {
 - `bind_secret` (String, Sensitive) Password for the LDAP bind DN. Write-only: the server never returns it, so out-of-band changes are not detected.
 - `claim_username` (String) OIDC claim that contains the username, e.g. `preferred_username`.
 - `filter_login` (String) LDAP filter template for login lookups, e.g. `(&(objectClass=inetOrgPerson)(uid=?))`.
-- `filter_mailbox` (String) LDAP filter template for mailbox lookups, e.g. `(&(objectClass=inetOrgPerson)(mail=?))`.
+- `filter_mailbox` (String) LDAP filter template for recipient (mailbox) lookups, e.g. `(&(objectClass=inetOrgPerson)(mail=?))`. Sent as `filterMailbox` to Stalwart v0.16 and `filterRecipient` to v1.
 - `issuer_url` (String) OIDC issuer URL, e.g. `https://auth.example.com`. Required for `Oidc` type.
-- `require_scopes` (Set of String) OIDC scopes required for authentication.
+- `lenient_issuer_match` (Boolean) Ignore a trailing-slash difference between the configured and reported issuer. Stalwart v1 only: on a v0.16 server it reads as null and setting it is an error.
+- `opaque_token_validation` (String) How access tokens that are not JWTs are validated: `none` (server default; rejects them), `userInfo` or `introspection`. Stalwart v1 only: on a v0.16 server it reads as null and setting it is an error.
+- `require_scopes` (Set of String) OIDC scopes a token must carry. Stalwart v0.16 only: v1 removed the setting (see `unscoped_tokens` and `accepted_audiences`), so on a v1 server it reads as empty and setting it is an error.
+- `skip_audience_validation` (Boolean) Accept access tokens whose `aud` claim is missing or matches none of the accepted audiences. Stalwart v1 only: on a v0.16 server it reads as null and setting it is an error.
+- `unscoped_tokens` (String) How access tokens without any of the mail, contacts, calendars or files scopes are handled: `reject` (server default), `interoperable` or `full`. Stalwart v1 only: on a v0.16 server it reads as null and setting it is an error.
 - `url` (String) LDAP server URL, e.g. `ldap://auth.example.com:389`. Required for `Ldap` type.
 
 ### Read-Only

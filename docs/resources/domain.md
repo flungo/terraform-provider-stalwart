@@ -65,7 +65,7 @@ resource "stalwart_domain" "managed_certificate" {
 - `dns_management` (String) DNS record management mode: `Manual` or `Automatic`. Defaults to `Manual`.
 - `dns_origin` (String) DNS origin (zone root) used when `dns_management` is `Automatic`.
 - `dns_server_id` (String) DNS server id used when `dns_management` is `Automatic`.
-- `enabled` (Boolean) Whether this domain is enabled. Defaults to `true`.
+- `enabled` (Boolean) Whether this domain is enabled. Defaults to `true`. Sent as `isEnabled` to Stalwart v0.16 and `enable` to v1.
 - `publish_records` (Set of String) Set of DNS record types the server should automatically publish when `dns_management` is `Automatic`. Valid values: `dkim`, `tlsa`, `spf`, `mx`, `dmarc`, `srv`, `mtaSts`, `tlsRpt`, `caa`, `autoConfig`, `autoConfigLegacy`, `autoDiscover`.
 - `report_address` (String) Address to receive DMARC, TLS-RPT and CAA reports for this domain (maps to `reportAddressUri`). Defaults to `mailto:postmaster`.
 - `subaddressing` (String) Sub-addressing (plus addressing) mode: `Enabled` or `Disabled`. Defaults to `Enabled`.
